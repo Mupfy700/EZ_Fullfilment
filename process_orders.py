@@ -1,5 +1,4 @@
 import pandas as pd
-import re
 import os
 
 def read_csv(file_path):
@@ -172,10 +171,14 @@ def process_files(input_folder, output_folder, weight_map):
             save_to_csv(regular_data, f"{base_filename}_EZ_Originalz.csv", output_folder)
 
 
-# Beispielhafte Verwendung:
-input_folder = '/Users/danielgackle/Movies/EZ Originalz/Fullfilment Automatisierung/Automatic_Fullfilment/EZ_Fullfilment/input_data'  # Ersetzen Sie dies durch den Pfad zum Eingangsordner
-output_folder = '/Users/danielgackle/Movies/EZ Originalz/Fullfilment Automatisierung/Automatic_Fullfilment/EZ_Fullfilment/output_data'  # Ersetzen Sie dies durch den Pfad zum Ausgangsordner
+# Ordner Daniels Mac
+# input_folder = '/Users/danielgackle/Movies/EZ Originalz/Fullfilment Automatisierung/Automatic_Fullfilment/EZ_Fullfilment/input_data'  # Ersetzen Sie dies durch den Pfad zum Eingangsordner
+# output_folder = '/Users/danielgackle/Movies/EZ Originalz/Fullfilment Automatisierung/Automatic_Fullfilment/EZ_Fullfilment/output_data'  # Ersetzen Sie dies durch den Pfad zum Ausgangsordner
 
-weight_map = {1: 0.1, 2: 0.2, 3: 0.2, 4: 0.2, 6: 0.3, 8: 0.3, 9: 0.4, 10: 0.4, 11: 0.4, 12: 0.4, 13: 0.4, 14: 0.4, 15: 0.4, 16: 0.5, 17: 0.7, 18: 0.7, 19: 0.7, 20: 0.7}
+# Ordner Windows Jan
+input_folder = r'C:\Users\janbi\Desktop\CSV_input'
+output_folder = r'C:\Users\janbi\Desktop\CSV_output'
+
+weight_map = {1: 0.1, 2: 0.2, 3: 0.2, 4: 0.2, 5: 0.3, 6: 0.3, 7: 0.3, 8: 0.3, 9: 0.4, 10: 0.4, 11: 0.4, 12: 0.4, 13: 0.4, 14: 0.4, 15: 0.4, 16: 0.5, 17: 0.7, 18: 0.7, 19: 0.7, 20: 0.7}
 
 process_files(input_folder, output_folder, weight_map)

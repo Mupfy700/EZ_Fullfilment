@@ -41,6 +41,7 @@ def filter_by_country(data, country_code):
     print(f"Daten für {country_code} gefiltert.")
     return filtered_data
 
+
 def add_weight_column(data, weight_map, country_code=None):
     """ 
     Hinzufügen einer Gewichtsspalte basierend auf der Gesamtanzahl der bestellten Untersetzer.
@@ -53,7 +54,8 @@ def add_weight_column(data, weight_map, country_code=None):
         Falls die Gesamtanzahl nicht im weight_map enthalten ist, wird die Anzahl der Untersetzer als natürliche Zahl zurückgegeben.
         """
         total_quantity = int(row['Total Lineitem Quantity'])  # Gesamtanzahl der bestellten Untersetzer in der aktuellen Zeile als int
-        return weight_map.get(total_quantity, total_quantity)  # Gewicht aus der weight_map holen oder die Anzahl der Untersetzer als natürliche Zahl zurückgeben, falls nicht vorhanden
+        weight = weight_map.get(total_quantity, total_quantity)  # Gewicht aus der weight_map holen oder die Anzahl der Untersetzer als natürliche Zahl zurückgeben, falls nicht vorhanden
+        return str(weight).replace('.', ',')  # Punkt durch Komma ersetzen und in einen String umwandeln
     
     # Konvertiert die 'Total Lineitem Quantity' Spalte zu int
     data['Total Lineitem Quantity'] = data['Total Lineitem Quantity'].astype(int)

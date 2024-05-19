@@ -186,8 +186,8 @@ def process_files(input_folder, output_folder, weight_map):
 
             # Dateien speichern
             base_filename = os.path.splitext(filename)[0]
-            save_to_csv(dhl_de_data, f"DHL_{base_filename}_DE.csv", output_folder)
-            save_to_csv(dhl_at_data, f"Premium_DHL_{base_filename}_AT.csv", output_folder)
+            save_to_csv(dhl_de_data, f"DHL_{base_filename}_EZ_Originalz.csv", output_folder)
+            save_to_csv(dhl_at_data, f"Premium_DHL_{base_filename}_EZ_Originalz.csv", output_folder)
 
             # Hersteller CSV-Datei erstellen
             regular_data = add_weight_column(cleaned_data_manufacturer, weight_map, country_code='AT')

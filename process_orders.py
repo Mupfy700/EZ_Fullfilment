@@ -93,7 +93,28 @@ def split_shipping_street_at(data):
     data.insert(street_index + 1, 'Shipping Supplement', '')
     data.insert(street_index + 2, 'Stiege', '')
     data.insert(street_index + 3, 'Top', '')
-    
+    return data
+
+def split_shipping_street(data, country_code):
+    """ 
+    Spalte 'Shipping Street' aufteilen und 'Shipping Supplement' hinzufügen.
+    Für AT zusätzlich 'Stiege' und 'Top' hinzufügen.
+    """
+    street_index = data.columns.get_loc('Shipping Street')
+    data.insert(street_index + 1, 'Shipping Supplement', '')
+
+    if country_code == 'AT':
+        data.insert(street_index + 2, 'Stiege', '')
+        data.insert(street_index + 3, 'Top', '')
+
+    for index, row in data.iterrows():
+        street = row['Shipping Street']
+        parts = street.split(',', 1)  # Split at the first comma only
+        data.at[index, 'Shipping Street'] = parts[0].strip()
+        if len(parts) > 1:
+            data.at[index, 'Shipping Supplement'] = parts[1].strip()
+
+    print(f"Spalte 'Shipping Street' für {country_code} aufgeteilt.")
     return data
 
 def save_to_csv(data, filename, output_folder):
@@ -160,8 +181,8 @@ def process_files(input_folder, output_folder, weight_map):
             dhl_at_data = remove_column(dhl_at_data, 'Total Lineitem Quantity')
 
             # Shipping Street aufteilen und Spalten hinzufügen
-            dhl_de_data = split_shipping_street_de(dhl_de_data)
-            dhl_at_data = split_shipping_street_at(dhl_at_data)
+            dhl_de_data = split_shipping_street(dhl_de_data, 'DE')
+            dhl_at_data = split_shipping_street(dhl_at_data, 'AT')
 
             # Dateien speichern
             base_filename = os.path.splitext(filename)[0]

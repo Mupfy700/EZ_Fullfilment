@@ -1,10 +1,11 @@
 import pandas as pd
 import os
 
+
 def read_csv(file_path):
-    """ Einlesen der CSV-Datei """
+    """ Einlesen der CSV-Datei und Erzwingen der richtigen Datentypen """
     try:
-        data = pd.read_csv(file_path)
+        data = pd.read_csv(file_path, dtype={'Shipping Zip': str})
         print(f"Datei {file_path} erfolgreich eingelesen!")
         return data
     except Exception as e:

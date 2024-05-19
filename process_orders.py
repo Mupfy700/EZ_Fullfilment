@@ -59,14 +59,10 @@ def add_weight_column(data, weight_map, country_code=None):
     
     # Konvertiert die 'Total Lineitem Quantity' Spalte zu int
     data['Total Lineitem Quantity'] = data['Total Lineitem Quantity'].astype(int)
-    
+
     # Wendet die calculate_weight Funktion auf jede Zeile des DataFrames an und erstellt die 'Weight'-Spalte
-    if country_code:
-        data['Weight'] = data.apply(lambda row: calculate_weight(row) if row['Shipping Country'] == country_code else '', axis=1)
-        print(f"Gewichtsspalte nur für Bestellungen aus {country_code} hinzugefügt.")
-    else:
-        data['Weight'] = data.apply(calculate_weight, axis=1)
-        print("Gewichtsspalte hinzugefügt basierend auf der Gesamtanzahl der bestellten Untersetzer.")
+    data['Weight'] = data.apply(lambda row: calculate_weight(row) if row['Shipping Country'] != 'DE' else '', axis=1)
+    print("Gewichtsspalte für alle Bestellungen außer DE hinzugefügt.")
     
     return data
 
@@ -79,23 +75,7 @@ def remove_column(data, column_name):
     return data
 
 
-def split_shipping_street_de(data):
-    """ Spalte 'Shipping Street' aufteilen und 'Shipping Supplement' hinzufügen für DE """
-    # Initialisieren der 'Shipping Supplement' Spalte
-    data.insert(data.columns.get_loc('Shipping Street') + 1, 'Shipping Supplement', '')
-    return data
-
-
-def split_shipping_street_at(data):
-    """ Spalte 'Shipping Street' aufteilen und 'Shipping Supplement', 'Stiege', 'Top' hinzufügen für AT """
-    # Initialisieren der 'Shipping Supplement', 'Stiege' und 'Top' Spalten
-    street_index = data.columns.get_loc('Shipping Street')
-    data.insert(street_index + 1, 'Shipping Supplement', '')
-    data.insert(street_index + 2, 'Stiege', '')
-    data.insert(street_index + 3, 'Top', '')
-    return data
-
-def split_shipping_street(data, country_code):
+def split_shipping_street(data, is_germany):
     """ 
     Spalte 'Shipping Street' aufteilen und 'Shipping Supplement' hinzufügen.
     Für AT zusätzlich 'Stiege' und 'Top' hinzufügen.
@@ -103,7 +83,7 @@ def split_shipping_street(data, country_code):
     street_index = data.columns.get_loc('Shipping Street')
     data.insert(street_index + 1, 'Shipping Supplement', '')
 
-    if country_code == 'AT':
+    if not is_germany:
         data.insert(street_index + 2, 'Stiege', '')
         data.insert(street_index + 3, 'Top', '')
 
@@ -114,7 +94,7 @@ def split_shipping_street(data, country_code):
         if len(parts) > 1:
             data.at[index, 'Shipping Supplement'] = parts[1].strip()
 
-    print(f"Spalte 'Shipping Street' für {country_code} aufgeteilt.")
+    print(f"Spalte 'Shipping Street' {'für Deutschland' if is_germany else 'für andere Länder'} aufgeteilt.")
     return data
 
 def save_to_csv(data, filename, output_folder):
@@ -126,6 +106,12 @@ def save_to_csv(data, filename, output_folder):
 
 def process_files(input_folder, output_folder, weight_map):
     """ Verarbeitet alle Dateien im Eingangsordner und speichert die resultierenden Dateien im Ausgangsordner """
+
+    # Sicherstellen, dass der Eingabeordner existiert
+    if not os.path.exists(input_folder):
+        print(f"Eingabeordner {input_folder} existiert nicht. Bitte überprüfen Sie den Pfad.")
+        return
+
     for filename in os.listdir(input_folder):
         if filename.endswith(".csv"):
             file_path = os.path.join(input_folder, filename)
@@ -171,26 +157,26 @@ def process_files(input_folder, output_folder, weight_map):
 
             # Filtern und separate Dateien erstellen
             dhl_de_data = filter_by_country(cleaned_data_dhl, 'DE')
-            dhl_at_data = filter_by_country(cleaned_data_dhl, 'AT')
+            dhl_not_de_data = filter_by_country(cleaned_data_dhl, 'AT')
 
             # Gewichtsspalte hinzufügen
-            dhl_at_data = add_weight_column(dhl_at_data, weight_map)
+            dhl_not_de_data = add_weight_column(dhl_not_de_data, weight_map)
 
             # Entfernen der Spalte 'Total Lineitem Quantity'
             dhl_de_data = remove_column(dhl_de_data, 'Total Lineitem Quantity')
-            dhl_at_data = remove_column(dhl_at_data, 'Total Lineitem Quantity')
+            dhl_not_de_data = remove_column(dhl_not_de_data, 'Total Lineitem Quantity')
 
             # Shipping Street aufteilen und Spalten hinzufügen
-            dhl_de_data = split_shipping_street(dhl_de_data, 'DE')
-            dhl_at_data = split_shipping_street(dhl_at_data, 'AT')
+            dhl_de_data = split_shipping_street(dhl_de_data, is_germany=True)
+            dhl_not_de_data = split_shipping_street(dhl_not_de_data, is_germany=False)
 
             # Dateien speichern
             base_filename = os.path.splitext(filename)[0]
             save_to_csv(dhl_de_data, f"DHL_{base_filename}_EZ_Originalz.csv", output_folder)
-            save_to_csv(dhl_at_data, f"Premium_DHL_{base_filename}_EZ_Originalz.csv", output_folder)
+            save_to_csv(dhl_not_de_data, f"Premium_DHL_{base_filename}_EZ_Originalz.csv", output_folder)
 
             # Hersteller CSV-Datei erstellen
-            regular_data = add_weight_column(cleaned_data_manufacturer, weight_map, country_code='AT')
+            regular_data = add_weight_column(cleaned_data_manufacturer, weight_map)
             regular_data = remove_column(regular_data, 'Total Lineitem Quantity')
             save_to_csv(regular_data, f"{base_filename}_EZ_Originalz.csv", output_folder)
 

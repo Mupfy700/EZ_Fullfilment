@@ -94,9 +94,9 @@ def split_shipping_street_at(data):
     return data
 
 def save_to_csv(data, filename, output_folder):
-    """ Speichern der Daten in einer CSV-Datei """
+    """ Speichern der Daten in einer CSV-Datei mit Semikolon als Trennzeichen und UTF-8 Kodierung """
     output_path = os.path.join(output_folder, filename)
-    data.to_csv(output_path, index=False)
+    data.to_csv(output_path, index=False, sep=';', encoding='utf-8-sig')
     print(f"Daten gespeichert in {output_path}")
 
 

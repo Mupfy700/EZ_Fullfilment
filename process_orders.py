@@ -41,8 +41,14 @@ def filter_by_country(data, country_code):
     print(f"Daten für {country_code} gefiltert.")
     return filtered_data
 
+def filter_not_by_country(data, country_code):
+    """ Filtern der Daten nach Land, exklusive country_code """
+    filtered_data = data[data['Shipping Country'] != country_code]
+    print(f"Daten, die nicht für {country_code} sind, gefiltert.")
+    return filtered_data
 
-def add_weight_column(data, weight_map, country_code=None):
+
+def add_weight_column(data, weight_map):
     """ 
     Hinzufügen einer Gewichtsspalte basierend auf der Gesamtanzahl der bestellten Untersetzer.
     Falls ein country_code angegeben ist, wird die Gewichtsspalte nur für Bestellungen aus diesem Land hinzugefügt.
@@ -54,19 +60,16 @@ def add_weight_column(data, weight_map, country_code=None):
         Falls die Gesamtanzahl nicht im weight_map enthalten ist, wird die Anzahl der Untersetzer als natürliche Zahl zurückgegeben.
         """
         total_quantity = int(row['Total Lineitem Quantity'])  # Gesamtanzahl der bestellten Untersetzer in der aktuellen Zeile als int
-        weight = weight_map.get(total_quantity, total_quantity)  # Gewicht aus der weight_map holen oder die Anzahl der Untersetzer als natürliche Zahl zurückgeben, falls nicht vorhanden
+        weight = weight_map.get(total_quantity, f"{total_quantity} Untersetzer")  # Gewicht aus der weight_map holen oder die Anzahl der Untersetzer als natürliche Zahl zurückgeben, falls nicht vorhanden
         return str(weight).replace('.', ',')  # Punkt durch Komma ersetzen und in einen String umwandeln
+    
     
     # Konvertiert die 'Total Lineitem Quantity' Spalte zu int
     data['Total Lineitem Quantity'] = data['Total Lineitem Quantity'].astype(int)
     
     # Wendet die calculate_weight Funktion auf jede Zeile des DataFrames an und erstellt die 'Weight'-Spalte
-    if country_code:
-        data['Weight'] = data.apply(lambda row: calculate_weight(row) if row['Shipping Country'] == country_code else '', axis=1)
-        print(f"Gewichtsspalte nur für Bestellungen aus {country_code} hinzugefügt.")
-    else:
-        data['Weight'] = data.apply(calculate_weight, axis=1)
-        print("Gewichtsspalte hinzugefügt basierend auf der Gesamtanzahl der bestellten Untersetzer.")
+    data['Weight'] = data.apply(lambda row: calculate_weight(row) if pd.notnull(row['Shipping Country']) and row['Shipping Country'] != 'DE' else '', axis=1)
+    print("Gewichtsspalte für alle Bestellungen außer DE hinzugefügt.")
     
     return data
 
@@ -95,7 +98,7 @@ def split_shipping_street_at(data):
     data.insert(street_index + 3, 'Top', '')
     return data
 
-def split_shipping_street(data, country_code):
+def split_shipping_street(data, is_germany):
     """ 
     Spalte 'Shipping Street' aufteilen und 'Shipping Supplement' hinzufügen.
     Für AT zusätzlich 'Stiege' und 'Top' hinzufügen.
@@ -103,7 +106,7 @@ def split_shipping_street(data, country_code):
     street_index = data.columns.get_loc('Shipping Street')
     data.insert(street_index + 1, 'Shipping Supplement', '')
 
-    if country_code == 'AT':
+    if not is_germany:
         data.insert(street_index + 2, 'Stiege', '')
         data.insert(street_index + 3, 'Top', '')
 
@@ -114,7 +117,7 @@ def split_shipping_street(data, country_code):
         if len(parts) > 1:
             data.at[index, 'Shipping Supplement'] = parts[1].strip()
 
-    print(f"Spalte 'Shipping Street' für {country_code} aufgeteilt.")
+    print(f"Spalte 'Shipping Street' aufgeteilt.")
     return data
 
 def save_to_csv(data, filename, output_folder):
@@ -171,37 +174,37 @@ def process_files(input_folder, output_folder, weight_map):
 
             # Filtern und separate Dateien erstellen
             dhl_de_data = filter_by_country(cleaned_data_dhl, 'DE')
-            dhl_at_data = filter_by_country(cleaned_data_dhl, 'AT')
+            dhl_eu_data = filter_not_by_country(cleaned_data_dhl, 'DE')
 
             # Gewichtsspalte hinzufügen
-            dhl_at_data = add_weight_column(dhl_at_data, weight_map)
+            dhl_eu_data = add_weight_column(dhl_eu_data, weight_map)
 
             # Entfernen der Spalte 'Total Lineitem Quantity'
             dhl_de_data = remove_column(dhl_de_data, 'Total Lineitem Quantity')
-            dhl_at_data = remove_column(dhl_at_data, 'Total Lineitem Quantity')
+            dhl_eu_data = remove_column(dhl_eu_data, 'Total Lineitem Quantity')
 
             # Shipping Street aufteilen und Spalten hinzufügen
-            dhl_de_data = split_shipping_street(dhl_de_data, 'DE')
-            dhl_at_data = split_shipping_street(dhl_at_data, 'AT')
+            dhl_de_data = split_shipping_street(dhl_de_data, is_germany=True)
+            dhl_eu_data = split_shipping_street(dhl_eu_data, is_germany=False)
 
             # Dateien speichern
             base_filename = os.path.splitext(filename)[0]
             save_to_csv(dhl_de_data, f"DHL_{base_filename}_EZ_Originalz.csv", output_folder)
-            save_to_csv(dhl_at_data, f"Premium_DHL_{base_filename}_EZ_Originalz.csv", output_folder)
+            save_to_csv(dhl_eu_data, f"Premium_DHL_{base_filename}_EZ_Originalz.csv", output_folder)
 
             # Hersteller CSV-Datei erstellen
-            regular_data = add_weight_column(cleaned_data_manufacturer, weight_map, country_code='AT')
+            regular_data = add_weight_column(cleaned_data_manufacturer, weight_map)
             regular_data = remove_column(regular_data, 'Total Lineitem Quantity')
             save_to_csv(regular_data, f"{base_filename}_EZ_Originalz.csv", output_folder)
 
 
 # Ordner Daniels Mac
-# input_folder = '/Users/danielgackle/Movies/EZ Originalz/Fullfilment Automatisierung/Automatic_Fullfilment/EZ_Fullfilment/input_data'  # Ersetzen Sie dies durch den Pfad zum Eingangsordner
-# output_folder = '/Users/danielgackle/Movies/EZ Originalz/Fullfilment Automatisierung/Automatic_Fullfilment/EZ_Fullfilment/output_data'  # Ersetzen Sie dies durch den Pfad zum Ausgangsordner
+input_folder = '/Users/danielgackle/Movies/EZ Originalz/Fullfilment Automatisierung/Automatic_Fullfilment/EZ_Fullfilment/input_data'  # Ersetzen Sie dies durch den Pfad zum Eingangsordner
+output_folder = '/Users/danielgackle/Movies/EZ Originalz/Fullfilment Automatisierung/Automatic_Fullfilment/EZ_Fullfilment/output_data'  # Ersetzen Sie dies durch den Pfad zum Ausgangsordner
 
 # Ordner Windows Jan
-input_folder = r'C:\Users\janbi\Desktop\CSV_input'
-output_folder = r'C:\Users\janbi\Desktop\CSV_output'
+# input_folder = r'C:\Users\janbi\Desktop\CSV_input'
+# output_folder = r'C:\Users\janbi\Desktop\CSV_output'
 
 weight_map = {1: 0.1, 2: 0.2, 3: 0.2, 4: 0.2, 5: 0.3, 6: 0.3, 7: 0.3, 8: 0.3, 9: 0.4, 10: 0.4, 11: 0.4, 12: 0.4, 13: 0.4, 14: 0.4, 15: 0.4, 16: 0.5, 17: 0.7, 18: 0.7, 19: 0.7, 20: 0.7}
 

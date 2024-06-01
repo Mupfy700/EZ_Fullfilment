@@ -1,0 +1,2 @@
+[console_scripts]
+run_fullfilment = ez_fullfilment.scripts.run_fullfilment:main

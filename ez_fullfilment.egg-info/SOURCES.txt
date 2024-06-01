@@ -1,0 +1,12 @@
+README.md
+setup.py
+ez_fullfilment/__init__.py
+ez_fullfilment/data_processor.py
+ez_fullfilment/file_manager.py
+ez_fullfilment/gui.py
+ez_fullfilment.egg-info/PKG-INFO
+ez_fullfilment.egg-info/SOURCES.txt
+ez_fullfilment.egg-info/dependency_links.txt
+ez_fullfilment.egg-info/entry_points.txt
+ez_fullfilment.egg-info/requires.txt
+ez_fullfilment.egg-info/top_level.txt

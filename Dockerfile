@@ -1,0 +1,18 @@
+FROM python:3.9-slim
+
+# Arbeitsverzeichnis im Container setzen
+WORKDIR /app
+
+# Kopiere alle notwendigen Dateien in den Container
+COPY . .
+
+ENV PYTHONPATH=/app
+
+# Installiere die Abhängigkeiten (inklusive Flask und Gunicorn)
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Exponiere Port 8080 (Google Cloud Run erwartet, dass die App auf diesem Port läuft)
+EXPOSE 8080
+
+# Verwende Gunicorn, um die Flask-App zu starten
+CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:8080", "app:app"]

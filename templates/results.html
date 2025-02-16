@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Ergebnisse</title>
+</head>
+<body>
+    <h1>Ergebnisse herunterladen</h1>
+    <ul>
+        {% for file in result_files %}
+        <li><a href="{{ url_for('download_file', filename=file) }}">{{ file }}</a></li>
+        {% endfor %}
+    </ul>
+    
+    <br>
+    <form action="{{ url_for('download_all') }}" method="get">
+        <button type="submit">Alle Ergebnisse herunterladen (ZIP)</button>
+    </form>
+    
+    <br>
+    <a href="{{ url_for('index') }}">Zurück zur Startseite</a>
+</body>
+</html>

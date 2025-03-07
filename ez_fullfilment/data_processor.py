@@ -1,4 +1,5 @@
 import pandas as pd
+import math
 
 class DataProcessor:
     def __init__(self, led_coaster_weight_map):
@@ -140,6 +141,9 @@ class DataProcessor:
             glass_weight = num_double * 0.13 + num_single * 0.08
         
             total_weight = led_weight + glass_weight
+
+            # Aufrunden auf 0,1 kg-Schritte
+            total_weight = math.ceil(total_weight * 10) / 10
         
             # Umwandeln in String und Punkt durch Komma ersetzen (für die CSV-Ausgabe)
             return str(total_weight).replace('.', ',')

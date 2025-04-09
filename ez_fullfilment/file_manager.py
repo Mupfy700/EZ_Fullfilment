@@ -63,9 +63,12 @@ class FileManager:
 
         dhl_de_data = self.processor.remove_column(dhl_de_data, 'Total LED Untersetzer')
         dhl_de_data = self.processor.remove_column(dhl_de_data, 'Total Glas Trinkhalme')
+        dhl_de_data = self.processor.remove_column(dhl_de_data, 'Total Holzaufsteller')
+
         dhl_eu_data = self.processor.remove_column(dhl_eu_data, 'Total LED Untersetzer')
         dhl_eu_data = self.processor.remove_column(dhl_eu_data, 'Total Glas Trinkhalme')
-
+        dhl_eu_data = self.processor.remove_column(dhl_eu_data, 'Total Holzaufsteller')
+        
 
         dhl_de_data = self.processor.split_shipping_street(dhl_de_data, is_germany=True)
         dhl_eu_data = self.processor.split_shipping_street(dhl_eu_data, is_germany=False)
@@ -77,4 +80,6 @@ class FileManager:
         #regular_data = self.processor.remove_column(regular_data, 'Total Lineitem Quantity')
         regular_data = self.processor.remove_column(regular_data, 'Total LED Untersetzer')
         regular_data = self.processor.remove_column(regular_data, 'Total Glas Trinkhalme')
+        regular_data = self.processor.remove_column(regular_data, 'Total Holzaufsteller')
+
         self.save_to_csv(regular_data, f"{specific_name}_EZ_Originalz.csv")

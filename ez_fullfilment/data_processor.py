@@ -28,8 +28,8 @@ class DataProcessor:
     
     def calculate_total_quantities_by_item_type_per_order(self, data):
         """
-        Berechnet die Gesamtanzahl der bestellten LED-Untersetzer und Glas-Trinkhalme pro Bestellung
-        und fügt zwei neue Spalten 'Total LED Untersetzer' und 'Total Glas Trinkhalme' hinzu.
+        Berechnet die Gesamtanzahl der bestellten LED-Untersetzer, Glas-Trinkhalme und Holzaufsteller pro Bestellung
+        und fügt entsprechende Spalten hinzu.
         """
 
         # Eventuelle überflüssige Leerzeichen entfernen, damit Vergleiche sauber funktionieren
@@ -55,13 +55,24 @@ class DataProcessor:
             .reset_index(name='Total Glas Trinkhalme')
         )
 
+        # Holzaufsteller
+        holz_mask = data['Lineitem name'].str.contains("Holzaufsteller", case=False, na=False)
+        holz_sums = (
+            data[holz_mask]
+            .groupby('Name')['Lineitem quantity']
+            .sum()
+            .reset_index(name='Total Holzaufsteller')
+        )
+
         # Zusammenführen der berechneten Werte mit dem ursprünglichen DataFrame
         data = pd.merge(data, led_sums, on='Name', how='left')
         data = pd.merge(data, glas_sums, on='Name', how='left')
+        data = pd.merge(data, holz_sums, on='Name', how='left')
 
         # Fehlende Werte (z. B. wenn keine Untersetzer oder Trinkhalme enthalten sind) auf 0 setzen
         data['Total LED Untersetzer'] = data['Total LED Untersetzer'].fillna(0).astype(int)
         data['Total Glas Trinkhalme']  = data['Total Glas Trinkhalme'].fillna(0).astype(int)
+        data['Total Holzaufsteller'] = data['Total Holzaufsteller'].fillna(0).astype(int)
 
         print("Gesamtanzahl der bestellten LED-Untersetzer und Glas-Trinkhalme pro Bestellung berechnet und hinzugefügt.")
         return data
@@ -139,8 +150,12 @@ class DataProcessor:
             # Restliche Trinkhalme werden als Einzelverpackung versendet
             num_single = total_glass % 2
             glass_weight = num_double * 0.13 + num_single * 0.08
+
+            # Holzaufsteller
+            total_wood = int(row['Total Holzaufsteller'])
+            wood_weight = total_wood * 0.084
         
-            total_weight = led_weight + glass_weight
+            total_weight = led_weight + glass_weight + wood_weight
 
             # Aufrunden auf 0,1 kg-Schritte
             total_weight = math.ceil(total_weight * 10) / 10
@@ -151,6 +166,7 @@ class DataProcessor:
         # Sicherstellen, dass die relevanten Spalten als int vorliegen
         data['Total LED Untersetzer'] = data['Total LED Untersetzer'].astype(int)
         data['Total Glas Trinkhalme'] = data['Total Glas Trinkhalme'].astype(int)
+        data['Total Holzaufsteller'] = data['Total Holzaufsteller'].astype(int)
     
         # Gewichtsspalte nur für Bestellungen außerhalb von Deutschland berechnen
         data['Weight'] = data.apply(
@@ -160,7 +176,7 @@ class DataProcessor:
             axis=1
         )
     
-        print("Gewichtsspalte für alle Bestellungen außer DE basierend auf LED-Untersetzer und Glas-Trinkhalmen hinzugefügt.")
+        print("Gewichtsspalte für alle Bestellungen außer DE basierend auf LED-Untersetzer, Glas-Trinkhalmen und Holzaufsteller hinzugefügt.")
         return data
 
     

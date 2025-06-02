@@ -46,3 +46,47 @@ Stelle sicher, dass deine Flask-App auf Port 8080 lauscht:
 app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
 Wenn du gunicorn verwendest, sollte dein Dockerfile mit folgendem Befehl enden:
 CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:8080", "app:app"]
+
+
+--
+
+## 🖥️ Lokales Testen des Skripts
+
+Wenn du Änderungen am Code vorgenommen hast und diese lokal testen möchtest, bevor du sie auf Google Cloud Run deployst, folge dieser Anleitung:
+
+### 🔧 Voraussetzungen
+
+- [Docker](https://www.docker.com/) ist installiert.
+- Dein Projekt enthält ein gültiges `Dockerfile`.
+
+---
+
+### ✅ Schritt-für-Schritt Anleitung
+
+#### 1. Docker-Image lokal bauen
+
+Baue das Docker-Image mit einem spezifischen Tag für die lokale Entwicklung:
+docker build -t ez_fullfilment:dev .
+
+#### 2. Docker-Container lokal starten
+Starte das Docker-Image in einem Container und mappe den Port 8080:
+docker run -p 8080:8080 ez_fullfilment:dev
+
+- Der Parameter `-p 8080:8080` sorgt dafür, dass der Container auf deinem lokalen Port 8080 erreichbar ist.
+
+#### 3. Anwendung im Browser testen
+
+Öffne [http://localhost:8080](http://localhost:8080) in deinem Browser, um die Anwendung zu testen.
+
+
+💡 **Hinweise:**
+- Stelle sicher, dass deine Flask-App auf Port 8080 lauscht:
+  ```python
+  app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+  ```
+- Falls du `gunicorn` verwendest, sollte dein Dockerfile mit folgendem Befehl enden:
+  ```dockerfile
+  CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:8080", "app:app"]
+  ```
+
+Mit dieser Anleitung kannst du dein Skript lokal testen und sicherstellen, dass es fehlerfrei funktioniert, bevor du es auf Google Cloud Run deployst.

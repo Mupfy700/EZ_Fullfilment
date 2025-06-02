@@ -8,20 +8,26 @@ class FileManager:
         self.output_folder = output_folder
         self.processor = DataProcessor(led_coaster_weight_map)
 
+    # Diese Funktion durchsucht den Eingabeordner nach allen CSV-Dateien,liest sie ein und kombiniert sie zu einem einzigen DataFrame.
     def merge_csv_files(self):
         all_files = [os.path.join(self.input_folder, f) for f in os.listdir(self.input_folder) if f.endswith('.csv')]
         combined_data = pd.concat([self.processor.read_csv(file) for file in all_files], ignore_index=True)
         print(f"Alle Dateien im Ordner {self.input_folder} zusammengeführt.")
         return combined_data
-
+    
+    # Diese Funktion speichert die übergebenen Daten (DataFrame) als CSV-Datei im angegebenen Ausgabeordner. Der Dateiname wird durch den Parameter `filename` bestimmt.
     def save_to_csv(self, data, filename):
         output_path = os.path.join(self.output_folder, filename)
         data.to_csv(output_path, index=False, sep=';', encoding='utf-8-sig')
         print(f"Daten gespeichert in {output_path}")
 
     def process_files(self, specific_name):
-        combined_data = self.merge_csv_files()
-        combined_data = self.processor.calculate_total_quantities_by_item_type_per_order(combined_data)
+        try:
+            combined_data = self.merge_csv_files()
+            combined_data = self.processor.calculate_total_quantities_by_item_type_per_order(combined_data)
+        except Exception as e:
+            print(f"Fehler bei der Verarbeitung der Dateien: {e}")
+            return
 
         columns_to_remove_dhl = [
              "Financial Status", "Paid at", "Fulfillment Status", "Fulfilled at", "Accepts Marketing", "Currency",
@@ -48,38 +54,40 @@ class FileManager:
             "Duties", "Billing Province Name", "Shipping Province Name", "Payment Terms Name", "Next Payment Due At", "Payment ID", "Payment References"
         ]
 
-        cleaned_data_dhl = self.processor.remove_unnecessary_columns(combined_data, columns_to_remove_dhl)
-        cleaned_data_manufacturer = self.processor.remove_unnecessary_columns(combined_data, columns_to_remove_manufacturer)
+
+        cleaned_data_dhl = self.processor.remove_columns(combined_data, columns_to_remove_dhl)
+        cleaned_data_manufacturer = self.processor.remove_columns(combined_data, columns_to_remove_manufacturer)
 
         cleaned_data_dhl = self.processor.remove_duplicates(cleaned_data_dhl)
+        cleaned_data_dhl = self.processor.add_weight_column(cleaned_data_dhl)
+        cleaned_data_dhl = self.processor.remove_columns(cleaned_data_dhl, ['Total LED Untersetzer', 'Total Glas Trinkhalme', 'Total Holzaufsteller'])
 
-        dhl_de_data = self.processor.filter_by_country(cleaned_data_dhl, 'DE')
-        dhl_eu_data = self.processor.filter_not_by_country(cleaned_data_dhl, 'DE')
+        cleaned_data_dhl = self.processor.split_shipping_street(cleaned_data_dhl)
 
-        dhl_eu_data = self.processor.add_weight_column(dhl_eu_data)
+        dhl_warenpost_data = cleaned_data_dhl[cleaned_data_dhl['Weight'].astype(float) < 1]
+        dhl_paket_data = cleaned_data_dhl[cleaned_data_dhl['Weight'].astype(float) >= 1]
 
-        #dhl_de_data = self.processor.remove_column(dhl_de_data, 'Total Lineitem Quantity')
-        #dhl_eu_data = self.processor.remove_column(dhl_eu_data, 'Total Lineitem Quantity')
+        #DE
+        dhl_de_warenpost_data = self.processor.filter_by_country(dhl_warenpost_data, 'DE')
+        dhl_de_paket_data = self.processor.filter_by_country(dhl_paket_data, 'DE')
+        self.save_to_csv(dhl_de_warenpost_data, f"DE_DHL_Warenpost_{specific_name}_EZ_Originalz.csv")
+        self.save_to_csv(dhl_de_paket_data, f"DE_DHL_Paket_{specific_name}_EZ_Originalz.csv")
 
-        dhl_de_data = self.processor.remove_column(dhl_de_data, 'Total LED Untersetzer')
-        dhl_de_data = self.processor.remove_column(dhl_de_data, 'Total Glas Trinkhalme')
-        dhl_de_data = self.processor.remove_column(dhl_de_data, 'Total Holzaufsteller')
+        #AT
+        dhl_at_warenpost_data = self.processor.filter_by_country(dhl_warenpost_data, 'AT')
+        dhl_at_warenpost_data = self.processor.add_austria_specific_columns(dhl_at_warenpost_data)
+        dhl_at_paket_data = self.processor.filter_by_country(dhl_paket_data, 'AT')
+        dhl_at_paket_data = self.processor.add_austria_specific_columns(dhl_at_paket_data)
+        self.save_to_csv(dhl_at_warenpost_data, f"AT_DHL_Premium_Warenpost_{specific_name}_EZ_Originalz.csv")
+        self.save_to_csv(dhl_at_paket_data, f"AT_DHL_Premium_Paket_{specific_name}_EZ_Originalz.csv")
 
-        dhl_eu_data = self.processor.remove_column(dhl_eu_data, 'Total LED Untersetzer')
-        dhl_eu_data = self.processor.remove_column(dhl_eu_data, 'Total Glas Trinkhalme')
-        dhl_eu_data = self.processor.remove_column(dhl_eu_data, 'Total Holzaufsteller')
-        
+        #FR
+        dhl_fr_warenpost_data = self.processor.filter_by_country(dhl_warenpost_data, 'FR')
+        dhl_fr_paket_data = self.processor.filter_by_country(dhl_paket_data, 'FR')
+        self.save_to_csv(dhl_fr_warenpost_data, f"FR_DHL_Premium_Warenpost_{specific_name}_EZ_Originalz.csv")
+        self.save_to_csv(dhl_fr_paket_data, f"FR_DHL_Premium_Paket_{specific_name}_EZ_Originalz.csv")
 
-        dhl_de_data = self.processor.split_shipping_street(dhl_de_data, is_germany=True)
-        dhl_eu_data = self.processor.split_shipping_street(dhl_eu_data, is_germany=False)
-
-        self.save_to_csv(dhl_de_data, f"DHL_{specific_name}_EZ_Originalz.csv")
-        self.save_to_csv(dhl_eu_data, f"Premium_DHL_{specific_name}_EZ_Originalz.csv")
-
+        #Manufacturer Data
         regular_data = self.processor.add_weight_column(cleaned_data_manufacturer)
-        #regular_data = self.processor.remove_column(regular_data, 'Total Lineitem Quantity')
-        regular_data = self.processor.remove_column(regular_data, 'Total LED Untersetzer')
-        regular_data = self.processor.remove_column(regular_data, 'Total Glas Trinkhalme')
-        regular_data = self.processor.remove_column(regular_data, 'Total Holzaufsteller')
-
+        regular_data = self.processor.remove_columns(regular_data, ['Total LED Untersetzer', 'Total Glas Trinkhalme', 'Total Holzaufsteller'])
         self.save_to_csv(regular_data, f"{specific_name}_EZ_Originalz.csv")

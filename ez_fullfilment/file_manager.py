@@ -18,6 +18,11 @@ class FileManager:
     # Diese Funktion speichert die übergebenen Daten (DataFrame) als CSV-Datei im angegebenen Ausgabeordner. Der Dateiname wird durch den Parameter `filename` bestimmt.
     def save_to_csv(self, data, filename):
         output_path = os.path.join(self.output_folder, filename)
+
+        # Umwandlung des Dezimaltrennzeichens für die CSV-Ausgabe
+        if 'Weight' in data.columns:
+            data['Weight'] = data['Weight'].apply(lambda x: str(x).replace('.', ','))
+
         data.to_csv(output_path, index=False, sep=';', encoding='utf-8-sig')
         print(f"Daten gespeichert in {output_path}")
 

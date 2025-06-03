@@ -1,23 +1,130 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Ergebnisse</title>
+    <title>Ergebnisse herunterladen</title>
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather+Sans:wght@700&family=Outfit:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4F1851;
+            --accent: #FCA821;
+            --light: #F9F4E3;
+            --text: #292929;
+            --bg: #FFFFFF;
+        }
+
+        body {
+            margin: 0;
+            padding: 2rem;
+            background-color: var(--light);
+            font-family: 'Outfit', sans-serif;
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background-color: var(--bg);
+            padding: 2rem 3rem;
+            border-radius: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 600px;
+            text-align: center;
+        }
+
+        h1 {
+            font-family: 'Merriweather Sans', sans-serif;
+            color: var(--text);
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+            text-align: left;
+        }
+
+        li {
+            margin-bottom: 0.7rem;
+        }
+
+        a {
+            text-decoration: none;
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .btn {
+            margin-top: 1.5rem;
+            padding: 0.8rem 1.5rem;
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .btn:hover {
+            background-color: var(--accent);
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 2rem;
+            font-size: 0.9rem;
+        }
+
+        .logo {
+            max-width: 150px;
+            margin-bottom: 2rem;
+        }
+    </style>
 </head>
 <body>
-    <h1>Ergebnisse herunterladen</h1>
-    <ul>
-        {% for file in result_files %}
-        <li><a href="{{ url_for('download_file', filename=file) }}">{{ file }}</a></li>
-        {% endfor %}
-    </ul>
-    
-    <br>
-    <form action="{{ url_for('download_all') }}" method="get">
-        <button type="submit">Alle Ergebnisse herunterladen (ZIP)</button>
-    </form>
-    
-    <br>
-    <a href="{{ url_for('index') }}">Zurück zur Startseite</a>
+
+    <img src="{{ url_for('static', filename='logo.png') }}" alt="EZ Originalz Logo" class="logo">
+
+    <div class="container">
+        <h1>Ergebnisse herunterladen</h1>
+
+        <ul>
+            {% for file in result_files %}
+                <li><a href="{{ url_for('download_file', filename=file) }}">{{ file }}</a></li>
+            {% endfor %}
+        </ul>
+
+        <form action="{{ url_for('download_all') }}" method="get">
+            <button type="submit" class="btn">Alle Ergebnisse herunterladen (ZIP)</button>
+        </form>
+
+        <a href="{{ url_for('index') }}" class="back-link">← Zurück zur Startseite</a>
+    </div>
+
+    <div class="info-block">
+            <p>Das Gesamtgewicht einer Bestellung wurde basierend auf den bestellten Produkten wie folgt berechnet:</p>
+            <ul>
+                <li><strong>LED-Untersetzer:</strong> Das Gewicht wurde anhand einer vordefinierten Gewichtstabelle ermittelt, die auf der Anzahl der bestellten Untersetzer basiert.</li>
+                <li><strong>Glas-Trinkhalme:</strong> 
+                    <ul>
+                        <li>Zwei Trinkhalme wurden als Doppelverpackung mit einem Gewicht von <strong>0,13 kg</strong> versendet.</li>
+                        <li>Ein einzelner Trinkhalm wurde in einer Einzelverpackung mit einem Gewicht von <strong>0,08 kg</strong> versendet.</li>
+                    </ul>
+                </li>
+                <li><strong>Holzaufsteller:</strong> Jeder Holzaufsteller wog <strong>0,084 kg</strong>.</li>
+            </ul>
+            <p>Das Gesamtgewicht wurde berechnet, indem die Gewichte aller Produkte summiert und anschließend auf <strong>0,1 kg-Schritte</strong> aufgerundet wurden.</p>
+        </div>
+
 </body>
 </html>

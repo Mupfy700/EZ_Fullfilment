@@ -125,9 +125,9 @@ class DataProcessor:
 
             # Aufrunden auf 0,1 kg-Schritte
             total_weight = math.ceil(total_weight * 10) / 10
-        
-            # Umwandeln in String und Punkt durch Komma ersetzen (für die CSV-Ausgabe)
-            return str(total_weight).replace('.', ',')
+
+            # Rückgabe als Float
+            return total_weight
     
         # Sicherstellen, dass die relevanten Spalten als int vorliegen
         data['Total LED Untersetzer'] = data['Total LED Untersetzer'].astype(int)

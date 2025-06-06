@@ -106,8 +106,10 @@ class DataProcessor:
             total_led = int(row['Total LED Untersetzer'])
             led_weight = self.led_coaster_weight_map.get(total_led)
             # Falls kein Eintrag in der Map vorhanden ist, kann alternativ ein Standardwert (z.B. 0) genutzt werden
-            if led_weight is None:
-                led_weight = 0
+            if led_weight is None and total_led == 0:
+                led_weight = 0.1
+            if led_weight is None and total_led > 28:
+                led_weight = total_led * 0.0345
         
             # Glas-Trinkhalme: Anzahl der bestellten Glas-Trinkhalme
             total_glass = int(row['Total Glas Trinkhalme'])
@@ -156,12 +158,10 @@ class DataProcessor:
         return data
     
     def add_austria_specific_columns(self, data):
-        """ Fügt die Spalten 'Stiege' und 'Top' hinzu, wenn das Land 'AT' (Österreich) im Datensatz enthalten ist. """
-        if 'AT' in data['Shipping Country'].values:
-            street_index = data.columns.get_loc('Shipping Street')
-            data.insert(street_index + 2, 'Stiege', '')
-            data.insert(street_index + 3, 'Top', '')
-            print("Spalten 'Stiege' und 'Top' für Österreich hinzugefügt.")
+        """ Fügt die Spalten 'Stiege' und 'Top' hinzu, unabhängig vom Land. """
+        street_index = data.columns.get_loc('Shipping Street')
+        # Spalten "Stiege" und "Top" hinzufügen
+        data.insert(street_index + 2, 'Stiege', '')
+        data.insert(street_index + 3, 'Top', '')
+        print("Spalten 'Stiege' und 'Top' hinzugefügt.")
         return data
-    
-    

@@ -83,19 +83,9 @@ class FileManager:
         self.save_to_csv(dhl_de_warenpost_data, f"DE_DHL_Warenpost_{specific_name}_EZ_Originalz.csv")
         self.save_to_csv(dhl_de_paket_data, f"DE_DHL_Paket_{specific_name}_EZ_Originalz.csv")
 
-
-        #FR
-        dhl_fr_warenpost_data = self.processor.filter_by_country(dhl_warenpost_data, 'FR')
-        dhl_fr_paket_data = self.processor.filter_by_country(dhl_paket_data, 'FR')
-        self.save_to_csv(dhl_fr_warenpost_data, f"FR_DHL_Premium_Warenpost_{specific_name}_EZ_Originalz.csv")
-        self.save_to_csv(dhl_fr_paket_data, f"FR_DHL_Premium_Paket_{specific_name}_EZ_Originalz.csv")
-
-
         # Internationale Bestellungen (nicht DE und nicht FR)
         international_warenpost_data = self.processor.filter_not_by_country(dhl_warenpost_data, 'DE')
-        international_warenpost_data = self.processor.filter_not_by_country(international_warenpost_data, 'FR')
         international_paket_data = self.processor.filter_not_by_country(dhl_paket_data, 'DE')
-        international_paket_data = self.processor.filter_not_by_country(international_paket_data, 'FR')
         
         # Hinzufügen der Spalten "Stiege" und "Top", falls "AT" enthalten ist
         international_warenpost_data = self.processor.add_austria_specific_columns(international_warenpost_data)
@@ -104,9 +94,7 @@ class FileManager:
         # Speichern der internationalen CSVs
         self.save_to_csv(international_warenpost_data, f"International_DHL_Warenpost_{specific_name}_EZ_Originalz.csv")
         self.save_to_csv(international_paket_data, f"International_DHL_Paket_{specific_name}_EZ_Originalz.csv")
-
-
-
+        
 
         #Manufacturer Data
         regular_data = self.processor.add_weight_column(cleaned_data_manufacturer)

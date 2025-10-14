@@ -100,6 +100,9 @@ class DataProcessor:
           - Anzahl der bestellten Glas-Trinkhalme wird mit 0,13 multipliziert."""
     
         def calculate_weight(row):
+            weight_glass_straw_package = 0.126  # Gewicht pro Glas-Trinkhalm-Packung in kg
+            weight_wood_stand = 0.117  # Gewicht pro Holzaufsteller in kg
+
             # LED-Gewicht ermitteln: Basierend auf der Gesamtanzahl der LED-Untersetzer
             total_led = int(row['Total LED Untersetzer'])
             led_weight = self.led_coaster_weight_map.get(total_led)
@@ -111,11 +114,11 @@ class DataProcessor:
         
             # Glas-Trinkhalme: Anzahl der bestellten Glas-Trinkhalme
             total_glass = int(row['Total Glas Trinkhalme'])
-            glass_weight = total_glass * 0.13
+            glass_weight = total_glass * weight_glass_straw_package
 
             # Holzaufsteller
             total_wood = int(row['Total Holzaufsteller'])
-            wood_weight = total_wood * 0.084
+            wood_weight = total_wood * weight_wood_stand
         
             total_weight = led_weight + glass_weight + wood_weight
 
@@ -158,4 +161,73 @@ class DataProcessor:
         data.insert(street_index + 2, 'Stiege', '')
         data.insert(street_index + 3, 'Top', '')
         print("Spalten 'Stiege' und 'Top' hinzugefügt.")
+        return data
+    
+    def add_manufacturer_costs(self, data):
+        """
+        Fügt pro Bestellung einen 'Manufacturer Cost'-Wert hinzu und summiert alle Kosten in einer letzten Zeile.
+        """
+
+        # Beispielhafte Einkaufspreise (bitte ggf. anpassen)
+        unit_price_led_coaster = 1.85           # pro LED-Untersetzer
+        price_sticker_front = 0.05              # Aufkleber Vorderseite
+        price_sticker_back = 0.06               # Aufkleber Rückseite
+        price_additional_battery = 0.25         # zusätzliche Batterie
+        price_pack_1 = 0.30                     # Einzelverpackung
+        price_pack_2 = 0.27                     # 2er-Verpackung
+        price_pack_4 = 0.27                     # 4er-Verpackung
+        order_processing_fee = 1.87             # Fixe Auftragsbearbeitungskosten
+
+        unit_price_glass_straw = 1.70           # pro Glasstrohhalm
+        unit_price_wooden_stand = 0.25          # pro Holzaufsteller
+
+        # Neue Spalte anlegen
+        data['Manufacturer Cost'] = ''
+
+        # Eindeutige Bestellungen bestimmen
+        unique_orders = data['Name'].unique()
+
+        # Speichert die berechneten Kosten je Bestellung zur späteren Summierung
+        total_costs = []
+
+        for order in unique_orders:
+            first_row_idx = data[data['Name'] == order].index[0]
+            subset = data.loc[first_row_idx]
+
+            # Artikelmengen
+            quantity_led = int(subset.get('Total LED Untersetzer', 0))
+            quantity_glass = int(subset.get('Total Glas Trinkhalme', 0))
+            quantity_stand = int(subset.get('Total Holzaufsteller', 0))
+
+            # Kosten berechnen
+            product_cost = quantity_led * (unit_price_led_coaster + price_sticker_front + price_sticker_back + price_additional_battery)
+
+            qty_4 = quantity_led // 4
+            remainder = quantity_led % 4
+            qty_2 = remainder // 2
+            qty_1 = remainder % 2
+            packaging_cost = qty_4 * price_pack_4 + qty_2 * price_pack_2 + qty_1 * price_pack_1
+
+            glass_cost = quantity_glass * unit_price_glass_straw
+            stand_cost = quantity_stand * unit_price_wooden_stand
+
+            total_cost = product_cost + packaging_cost + glass_cost + stand_cost + order_processing_fee
+            total_cost = round(total_cost, 2)
+
+            # In der ersten Zeile der Bestellung eintragen
+            data.at[first_row_idx, 'Manufacturer Cost'] = f"{total_cost:.2f}".replace('.', ',')
+
+            # Zur Summe addieren
+            total_costs.append(total_cost)
+
+        # Gesamtsumme
+        total_sum = round(sum(total_costs), 2)
+
+        total_row = pd.Series({col: '' for col in data.columns})
+        total_row['Name'] = 'GESAMTKOSTEN'
+        total_row['Manufacturer Cost'] = f"{total_sum:.2f}".replace('.', ',')
+
+        data = pd.concat([data, pd.DataFrame([total_row])], ignore_index=True)
+
+        print("Herstellerkosten berechnet (einmalig pro Bestellung) und Gesamtsumme hinzugefügt.")
         return data

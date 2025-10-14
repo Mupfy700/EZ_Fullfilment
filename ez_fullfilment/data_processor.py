@@ -97,9 +97,7 @@ class DataProcessor:
         basierend auf der Spalte 'Total LED Untersetzer'.
     
         Für die Glas-Trinkhalme gilt:
-          - Zwei Trinkhalme werden als Doppelverpackung mit 0,13 kg versendet.
-          - Ein einzelner Trinkhalm (falls die Bestellmenge ungerade ist) wird in einer Einzelverpackung mit 0,08 kg versendet.
-          - Es wird so viele Doppelverpackungen wie möglich gebildet, der eventuelle Rest wird als Einzelverpackung versendet."""
+          - Anzahl der bestellten Glas-Trinkhalme wird mit 0,13 multipliziert."""
     
         def calculate_weight(row):
             # LED-Gewicht ermitteln: Basierend auf der Gesamtanzahl der LED-Untersetzer
@@ -113,11 +111,7 @@ class DataProcessor:
         
             # Glas-Trinkhalme: Anzahl der bestellten Glas-Trinkhalme
             total_glass = int(row['Total Glas Trinkhalme'])
-            # Anzahl Doppelverpackungen: so viele wie möglich
-            num_double = total_glass // 2
-            # Restliche Trinkhalme werden als Einzelverpackung versendet
-            num_single = total_glass % 2
-            glass_weight = num_double * 0.13 + num_single * 0.08
+            glass_weight = total_glass * 0.13
 
             # Holzaufsteller
             total_wood = int(row['Total Holzaufsteller'])

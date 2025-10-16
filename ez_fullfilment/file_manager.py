@@ -94,10 +94,12 @@ class FileManager:
         # Speichern der internationalen CSVs
         self.save_to_csv(international_warenpost_data, f"International_DHL_Warenpost_{specific_name}_EZ_Originalz.csv")
         self.save_to_csv(international_paket_data, f"International_DHL_Paket_{specific_name}_EZ_Originalz.csv")
-        
 
         #Manufacturer Data
-        regular_data = self.processor.add_weight_column(cleaned_data_manufacturer)
-        regular_data = self.processor.add_manufacturer_costs(regular_data)
+        regular_data = cleaned_data_manufacturer.copy()
         regular_data = self.processor.remove_columns(regular_data, ['Total LED Untersetzer', 'Total Glas Trinkhalme', 'Total Holzaufsteller'])
         self.save_to_csv(regular_data, f"{specific_name}_EZ_Originalz.csv")
+
+        #Manufacturer Total Costs
+        cost_data = self.processor.add_manufacturer_costs(cleaned_data_manufacturer)
+        self.save_to_csv(cost_data, f"{specific_name}_Herstellkosten.csv")

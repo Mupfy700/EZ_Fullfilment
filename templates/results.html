@@ -89,6 +89,56 @@
             max-width: 150px;
             margin-bottom: 2rem;
         }
+
+        .info-block {
+            background-color: var(--bg);
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            padding: 2rem 2.5rem;
+            margin-top: 3rem;
+            max-width: 700px;
+            text-align: left;
+            line-height: 1.6;
+        }
+
+        .info-block h2 {
+            font-family: 'Merriweather Sans', sans-serif;
+            font-size: 1.4rem;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .info-block ul {
+            list-style: none;
+            padding-left: 0;
+            margin: 1rem 0;
+        }
+
+        .info-block li {
+            margin-bottom: 0.8rem;
+            position: relative;
+            padding-left: 1.5rem;
+        }
+
+        .info-block li::before {
+            content: "•";
+            color: var(--accent);
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+        }
+
+        .info-block p.summary {
+            border-top: 1px solid rgba(0,0,0,0.1);
+            padding-top: 1rem;
+            margin-top: 1.5rem;
+            font-style: italic;
+            color: #444;
+        }
+
     </style>
 </head>
 <body>
@@ -112,14 +162,27 @@
     </div>
 
     <div class="info-block">
-            <p>Das Gesamtgewicht einer Bestellung wurde basierend auf den bestellten Produkten wie folgt berechnet:</p>
-            <ul>
-                <li><strong>LED-Untersetzer:</strong> Das Gewicht wurde anhand einer vordefinierten Gewichtstabelle ermittelt, die auf der Anzahl der bestellten Untersetzer basiert.</li>
-                <li><strong>Glas-Trinkhalme:</strong> Anzahl der bestellten Glas-Trinkhalme wird mit <strong>0,126 kg</strong> multipliziert.</li>
-                <li><strong>Holzaufsteller:</strong> Jeder Holzaufsteller wog <strong>0,117 kg</strong>.</li>
-            </ul>
-            <p>Das Gesamtgewicht wurde berechnet, indem die Gewichte aller Produkte summiert und anschließend auf <strong>0,1 kg-Schritte</strong> aufgerundet wurden.</p>
-        </div>
+        <h2><span>ℹ️</span> Zusammensetzung der Herstellerkosten</h2>
+        <p>Die <strong>Herstellerkosten</strong> pro Bestellung setzen sich aus folgenden Komponenten zusammen:</p>
+
+        <ul>
+            <li><strong>LED-Untersetzer:</strong> Materialkosten (Untersetzer, Aufkleber, Zusatzbatterie) sowie Verpackung in 2er- und 4er-Schachteln. 
+                Bei Restmengen von 3 Stück wird eine zusätzliche 4er-Schachtel verwendet, bei einer Restmenge von 1 Stück eine 2er-Schachtel.</li>
+            <li><strong>Verpackungskosten:</strong> Jede verwendete Schachtel (2er oder 4er) verursacht zusätzliche Verpackungskosten für Material und Arbeitszeit.</li>
+            <li><strong>Glas-Trinkhalme:</strong> Die Kosten ergeben sich aus der Anzahl der bestellten Glas-Trinkhalme multipliziert mit dem Stückpreis.</li>
+            <li><strong>Holzaufsteller:</strong> Preis basierend auf der Anzahl der bestellten Aufsteller.</li>
+            <li><strong>Externe Produkte:</strong> Für alle anderen Produkte werden Verpackungskosten pro Stück berechnet.</li>
+            <li><strong>Versandkarton:</strong> Für jede Bestellung fällt eine Pauschale für den Versandkarton an.</li>
+            <li><strong>Auftragsbearbeitung:</strong> Jede Bestellung beinhaltet eine fixe Bearbeitungsgebühr.</li>
+        </ul>
+
+        <p class="summary">
+            Die <strong>Gesamtsumme aller Herstellerkosten</strong> wird in der letzten Zeile der CSV-Datei angezeigt –
+            ergänzt durch die Gesamtzahl aller Produkte (Untersetzer, Trinkhalme, Aufsteller, externe Produkte) sowie die Anzahl der Bestellungen.
+        </p>
+    </div>
+
+
 
 </body>
 </html>

@@ -97,10 +97,10 @@ class FileManager:
 
         #Manufacturer Data
         regular_data = cleaned_data_manufacturer.copy()
-        regular_data = self.processor.remove_columns(regular_data, ['Total LED Untersetzer', 'Total Glas Trinkhalme', 'Total Holzaufsteller', 'Shipping Street', 'Shipping Company', 'Shipping City', 'Shipping Zip', 'Shipping Country'])
+        regular_data = self.processor.remove_columns(regular_data, ['Total LED Untersetzer', 'Total Glas Trinkhalme', 'Total Holzaufsteller', 'Shipping Street', 'Shipping Company', 'Shipping City', 'Shipping Zip'])
         self.save_to_csv(regular_data, f"{specific_name}_EZ_Originalz.csv")
 
         #Manufacturer Total Costs
         cost_data = self.processor.add_manufacturer_costs(cleaned_data_manufacturer)
-        cost_data = self.processor.remove_columns(cost_data, ['Shipping Street', 'Shipping Company', 'Shipping City', 'Shipping Zip', 'Shipping Country'])
+        cost_data = self.processor.remove_columns(cost_data, ['Shipping Street', 'Shipping Company', 'Shipping City', 'Shipping Zip'])
         self.save_to_csv(cost_data, f"{specific_name}_Herstellkosten.csv")

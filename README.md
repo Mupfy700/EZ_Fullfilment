@@ -38,6 +38,17 @@ gcloud run deploy ez-fullfilment \
   --region europe-west1 \
   --allow-unauthenticated
 
+--------------------------- Komplettes Command-Set: ---------------------------
+docker build --platform=linux/amd64 -t ez_fullfilment .
+docker tag ez_fullfilment gcr.io/ez-fullfilment/ez_fullfilment
+docker push gcr.io/ez-fullfilment/ez_fullfilment
+gcloud run deploy ez-fullfilment \
+  --image gcr.io/ez-fullfilment/ez_fullfilment \
+  --platform managed \
+  --region europe-west1 \
+  --allow-unauthenticated
+-------------------------------------------------------------------------------
+
 
 💡 Hinweise
 Wichtig: Verwende --platform=linux/amd64, wenn du auf einem Apple Silicon (M1/M2) Mac arbeitest.
@@ -73,6 +84,12 @@ Starte das Docker-Image in einem Container und mappe den Port 8080:
 docker run -p 8080:8080 ez_fullfilment:dev
 
 - Der Parameter `-p 8080:8080` sorgt dafür, dass der Container auf deinem lokalen Port 8080 erreichbar ist.
+
+
+--------------------------- Komplettes Command-Set: ---------------------------
+docker build -t ez_fullfilment:dev .
+docker run -p 8080:8080 ez_fullfilment:dev
+-------------------------------------------------------------------------------
 
 #### 3. Anwendung im Browser testen
 

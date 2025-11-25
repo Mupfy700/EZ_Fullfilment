@@ -201,6 +201,9 @@ class DataProcessor:
         total_glass = 0
         total_wood = 0
         total_external = 0
+        total_pack_2 = 0
+        total_pack_4 = 0
+
 
         for order in unique_orders:
             order_rows = data[data['Name'] == order]
@@ -232,6 +235,11 @@ class DataProcessor:
                 qty_2 = 1
             else:
                 qty_2 = remainder // 2
+
+            # Verpackungszähler erhöhen
+            total_pack_2 += qty_2
+            total_pack_4 += qty_4
+
 
             packaging_cost = qty_4 * price_pack_4 + qty_2 * price_pack_2
             packing_work_cost = (qty_4 + qty_2) * price_packing_in_packs
@@ -277,6 +285,9 @@ class DataProcessor:
         total_row['Total Holzaufsteller'] = total_wood
         total_row['Externe Produkte'] = total_external
         total_row['Anzahl Bestellungen'] = total_orders
+        total_row['Gesamt 2er-Schachteln'] = total_pack_2
+        total_row['Gesamt 4er-Schachteln'] = total_pack_4
+
 
         data = pd.concat([data, pd.DataFrame([total_row])], ignore_index=True)
 

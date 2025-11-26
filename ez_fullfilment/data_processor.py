@@ -293,3 +293,161 @@ class DataProcessor:
 
         print("Herstellerkosten berechnet, externe Produkte berücksichtigt und Gesamtsumme mit Produktanzahlen hinzugefügt.")
         return data
+    
+    def generate_design_overview(self, data):
+        """
+        Erstellt eine CSV-Übersicht der LED-Untersetzer-Designs und Zubehörprodukte.
+
+        Ausgabeformat:
+        - Spalten: Design | LED warmweiß | LED rot | LED grün | LED blau | Gesamt
+        - Zuerst: alle LED-Untersetzer-Designs, nach Gesamtzahl absteigend sortiert
+        - Danach (mit Leerzeile dazwischen): Zubehörprodukte (keine LED-Farben, nur Gesamtmenge)
+        """
+
+        # Nur Zeilen mit einem 'Lineitem name' betrachten
+        df = data.copy()
+        df = df[df['Lineitem name'].notna()]
+
+        # ------------------------------------------
+        # 1) LED-Untersetzer erkennen und parsen
+        # ------------------------------------------
+        # LED-Untersetzer: haben ein " / LED ..." im Namen
+        led_mask = df['Lineitem name'].str.contains('LED ', na=False) & \
+            df['Lineitem name'].str.contains('Untersetzer', na=False)
+
+
+        led_df = df[led_mask].copy()
+
+        def extract_design_and_color(name: str):
+            """
+            Erwartete Formate:
+            1) Leuchtende LED-Untersetzer ... - Anthrazit / LED blau
+            2) Leuchtende LED-Untersetzer ... | Design: Schneeflocke - LED blau
+            """
+
+            name = str(name)
+
+            # 1) LED-Farbe ermitteln: alles ab "LED " bis zum Ende
+            color = ''
+            if 'LED ' in name:
+                color_part = name.split('LED ', 1)[1].strip()    # z.B. "blau" oder "warmweiß"
+                color = f"LED {color_part}"
+            # Wenn du stattdessen exakt "LED blau" etc. im Pivot haben willst, passt das perfekt.
+
+            design = ''
+
+            # 2a) Neues Format: "... | Design: Schneeflocke - LED blau"
+            if '| Design:' in name and ' - ' in name:
+                # nach "| Design:" kommt " Schneeflocke - LED blau"
+                after_design = name.split('| Design:', 1)[1]
+                design = after_design.split(' - ', 1)[0].strip()
+
+            # 2b) Altes Format: "... - Anthrazit / LED blau"
+            elif ' - ' in name and ' / ' in name:
+                after_dash = name.split(' - ', 1)[1]             # "Anthrazit / LED blau"
+                design = after_dash.split(' / ', 1)[0].strip()
+
+            # 2c) Fallback: falls mal irgendetwas anderes kommt
+            elif ' - ' in name:
+                # Nimm das, was nach dem '-' kommt, bis vor "LED"
+                after_dash = name.split(' - ', 1)[1]
+                if 'LED ' in after_dash:
+                    design = after_dash.split('LED ', 1)[0].strip()
+                else:
+                    design = after_dash.strip()
+
+            return design, color
+
+        led_df[['Design', 'LED_Farbe']] = led_df['Lineitem name'].apply(
+            lambda s: pd.Series(extract_design_and_color(s))
+        )
+
+
+        # Gruppieren: Design + Farbe -> Summe der bestellten Menge
+        grouped = (
+            led_df
+            .groupby(['Design', 'LED_Farbe'])['Lineitem quantity']
+            .sum()
+            .reset_index()
+        )
+
+        # Pivot: eine Zeile pro Design, Spalten = LED-Farben
+        pivot = grouped.pivot(
+            index='Design',
+            columns='LED_Farbe',
+            values='Lineitem quantity'
+        ).fillna(0)
+
+        # Gewünschte Spaltenreihenfolge für Farben
+        desired_colors = ['LED warmweiß', 'LED rot', 'LED grün', 'LED blau']
+        for c in desired_colors:
+            if c not in pivot.columns:
+                pivot[c] = 0
+
+        pivot = pivot[desired_colors]
+
+        # In Integer umwandeln
+        pivot = pivot.astype(int)
+
+        # Gesamtspalte
+        pivot['Gesamt'] = pivot.sum(axis=1)
+
+        # Nach Gesamt absteigend sortieren
+        pivot = pivot.sort_values('Gesamt', ascending=False)
+
+        # Index als Spalte
+        design_df = pivot.reset_index()
+
+        # Spaltennamen angleichen
+        design_df.columns = ['Design', 'LED warmweiß', 'LED rot', 'LED grün', 'LED blau', 'Gesamt']
+
+        # ------------------------------------------
+        # 2) Zubehörprodukte (keine LED-Farbe)
+        # ------------------------------------------
+        accessories_df = df[~led_mask].copy()
+
+        # Gruppieren nach Produktnamen
+        accessories_grouped = (
+            accessories_df
+            .groupby('Lineitem name')['Lineitem quantity']
+            .sum()
+            .reset_index()
+            .rename(columns={
+                'Lineitem name': 'Design',  # für Konsistenz gleiche Spaltenbezeichnung
+                'Lineitem quantity': 'Gesamt'
+            })
+        )
+
+        # Nach Gesamt absteigend sortieren
+        accessories_grouped = accessories_grouped.sort_values('Gesamt', ascending=False)
+
+        # In das gleiche Spaltenformat bringen wie die Design-Tabelle
+        accessories_grouped['LED warmweiß'] = ''
+        accessories_grouped['LED rot'] = ''
+        accessories_grouped['LED grün'] = ''
+        accessories_grouped['LED blau'] = ''
+
+        accessories_grouped = accessories_grouped[
+            ['Design', 'LED warmweiß', 'LED rot', 'LED grün', 'LED blau', 'Gesamt']
+        ]
+
+        # ------------------------------------------
+        # 3) Tabellen zusammenbauen
+        # ------------------------------------------
+        cols = ['Design', 'LED warmweiß', 'LED rot', 'LED grün', 'LED blau', 'Gesamt']
+
+        # Leerzeile
+        empty_row = pd.DataFrame([['', '', '', '', '', '']], columns=cols)
+
+        # Überschriftzeile für Zubehör (optional)
+        header_accessories = pd.DataFrame(
+            [['--- Zubehörprodukte ---', '', '', '', '', '']],
+            columns=cols
+        )
+
+        final_df = pd.concat(
+            [design_df, empty_row, header_accessories, accessories_grouped],
+            ignore_index=True
+        )
+
+        return final_df

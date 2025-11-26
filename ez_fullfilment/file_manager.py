@@ -104,3 +104,7 @@ class FileManager:
         cost_data = self.processor.add_manufacturer_costs(cleaned_data_manufacturer)
         cost_data = self.processor.remove_columns(cost_data, ['Shipping Street', 'Shipping Company', 'Shipping City', 'Shipping Zip'])
         self.save_to_csv(cost_data, f"{specific_name}_Herstellkosten.csv")
+        
+        #Designübersicht
+        design_overview = self.processor.generate_design_overview(regular_data)
+        self.save_to_csv(design_overview, f"{specific_name}_Designübersicht.csv")

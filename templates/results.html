@@ -101,6 +101,34 @@
             line-height: 1.6;
         }
 
+        .category-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+            width: 100%;
+        }
+
+        .category-card {
+            border: 1px solid rgba(0,0,0,0.08);
+            border-radius: 12px;
+            background: #fff7ec;
+            padding: 1rem 1.2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        .category-card h3 {
+            margin-top: 0;
+            margin-bottom: 0.8rem;
+            color: var(--primary);
+            font-size: 1.1rem;
+        }
+
+        .category-card p {
+            margin: 0.3rem 0;
+            font-size: 0.95rem;
+        }
+
         .info-block h2 {
             font-family: 'Merriweather Sans', sans-serif;
             font-size: 1.4rem;
@@ -148,8 +176,34 @@
     <div class="container">
         <h1>Ergebnisse herunterladen</h1>
 
+        <h2>PDFs nach Kategorie</h2>
+        <div class="category-grid">
+            {% for name, data in category_outputs.items() %}
+            <div class="category-card">
+                <h3>{{ name }}</h3>
+                <p>
+                    Lieferscheine:
+                    {% if data.packing %}
+                        <a href="{{ url_for('download_file', filename=data.packing) }}">{{ data.packing }}</a>
+                    {% else %}
+                        Keine Datei erzeugt
+                    {% endif %}
+                </p>
+                <p>
+                    Versandlabel:
+                    {% if data.labels %}
+                        <a href="{{ url_for('download_file', filename=data.labels) }}">{{ data.labels }}</a>
+                    {% else %}
+                        Keine Datei erzeugt
+                    {% endif %}
+                </p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <h2>Weitere Dateien</h2>
         <ul>
-            {% for file in result_files %}
+            {% for file in other_files %}
                 <li><a href="{{ url_for('download_file', filename=file) }}">{{ file }}</a></li>
             {% endfor %}
         </ul>

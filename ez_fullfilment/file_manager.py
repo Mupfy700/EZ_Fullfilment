@@ -1,12 +1,25 @@
 import os
+import re
+
 import pandas as pd
+from PyPDF2 import PdfReader, PdfWriter
+
 from .data_processor import DataProcessor
 
 class FileManager:
-    def __init__(self, input_folder, output_folder, led_coaster_weight_map):
+    def __init__(
+        self,
+        input_folder,
+        output_folder,
+        led_coaster_weight_map,
+        packing_slip_files=None,
+        shipping_label_files=None,
+    ):
         self.input_folder = input_folder
         self.output_folder = output_folder
         self.processor = DataProcessor(led_coaster_weight_map)
+        self.packing_slip_files = packing_slip_files or []
+        self.shipping_label_files = shipping_label_files or []
 
     # Diese Funktion durchsucht den Eingabeordner nach allen CSV-Dateien,liest sie ein und kombiniert sie zu einem einzigen DataFrame.
     def merge_csv_files(self):
@@ -31,6 +44,44 @@ class FileManager:
         data.to_csv(output_path, index=False, sep=';', encoding='utf-8-sig')
         print(f"Daten gespeichert in {output_path}")
 
+    def extract_order_pages(self, pdf_files, patterns):
+        order_pages = {}
+
+        for pdf_path in pdf_files:
+            try:
+                reader = PdfReader(pdf_path)
+            except Exception as exc:  # pragma: no cover - defensive against invalid uploads
+                print(f"Konnte PDF {pdf_path} nicht lesen: {exc}")
+                continue
+
+            for page in reader.pages:
+                text = page.extract_text() or ""
+                order_id = None
+                for pattern in patterns:
+                    match = re.search(pattern, text, flags=re.IGNORECASE)
+                    if match:
+                        order_id = self.processor.normalize_order_id(match.group(1))
+                        break
+                if order_id:
+                    order_pages.setdefault(order_id, []).append(page)
+
+        return order_pages
+
+    def build_category_pdf(self, order_ids, order_pages, filename):
+        writer = PdfWriter()
+        for order_id in order_ids:
+            for page in order_pages.get(order_id, []):
+                writer.add_page(page)
+
+        if not writer.pages:
+            return None
+
+        output_path = os.path.join(self.output_folder, filename)
+        with open(output_path, "wb") as pdf_file:
+            writer.write(pdf_file)
+        print(f"PDF gespeichert: {output_path}")
+        return output_path
+
     def process_files(self, specific_name):
         try:
             combined_data = self.merge_csv_files()
@@ -38,6 +89,8 @@ class FileManager:
         except Exception as e:
             print(f"Fehler bei der Verarbeitung der Dateien: {e}")
             return
+
+        categories = self.processor.categorize_orders(combined_data)
 
         columns_to_remove_dhl = [
              "Financial Status", "Paid at", "Fulfillment Status", "Fulfilled at", "Accepts Marketing", "Currency",
@@ -108,3 +161,27 @@ class FileManager:
         #Designübersicht
         design_overview = self.processor.generate_design_overview(regular_data)
         self.save_to_csv(design_overview, f"{specific_name}_Designübersicht.csv")
+
+        category_labels = {
+            "marmor": "Marmor",
+            "schwarzer_marmor": "Schwarzer_Marmor",
+            "rest": "Rest",
+        }
+
+        if self.packing_slip_files:
+            packing_pages = self.extract_order_pages(
+                self.packing_slip_files,
+                [r"Bestellung\s*#(\d+)", r"Commande\s*#(\d+)"]
+            )
+            for key, orders in categories.items():
+                filename = f"{specific_name}_Lieferscheine_{category_labels[key]}.pdf"
+                self.build_category_pdf(orders, packing_pages, filename)
+
+        if self.shipping_label_files:
+            label_pages = self.extract_order_pages(
+                self.shipping_label_files,
+                [r"Order\s*#(\d+)", r"Referenznr\.?:\s*Order\s*#(\d+)"]
+            )
+            for key, orders in categories.items():
+                filename = f"{specific_name}_Versandlabel_{category_labels[key]}.pdf"
+                self.build_category_pdf(orders, label_pages, filename)

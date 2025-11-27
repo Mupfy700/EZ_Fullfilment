@@ -1,5 +1,6 @@
 import pandas as pd
 import math
+import re
 
 class DataProcessor:
     def __init__(self, led_coaster_weight_map):
@@ -14,6 +15,45 @@ class DataProcessor:
             return data
         except Exception as e:
             print(f"Es gab ein Problem beim Einlesen der Datei {file_path}: {e}")
+
+    def normalize_order_id(self, value):
+        digits = "".join(ch for ch in str(value) if ch.isdigit()) if pd.notnull(value) else ""
+        return digits or str(value)
+
+    def categorize_orders(self, data):
+        accessory_skus = {"9999999998", "9999999999", "G00000001"}
+
+        categories = {
+            "marmor": [],
+            "schwarzer_marmor": [],
+            "rest": [],
+        }
+
+        for order_id, group in data.groupby("Name"):
+            normalized_id = self.normalize_order_id(order_id)
+            skus = [str(sku) for sku in group.get("Lineitem sku", []) if pd.notnull(sku)]
+            filtered_skus = [sku for sku in skus if all(acc not in sku for acc in accessory_skus)]
+
+            has_marmor = any("01010103" in sku for sku in filtered_skus)
+            has_schwarzer = any("01010105" in sku for sku in filtered_skus)
+            has_other = any(not ("01010103" in sku or "01010105" in sku) for sku in filtered_skus)
+
+            if filtered_skus and has_marmor and not has_schwarzer and not has_other:
+                categories["marmor"].append(normalized_id)
+            elif filtered_skus and has_schwarzer and not has_marmor and not has_other:
+                categories["schwarzer_marmor"].append(normalized_id)
+            else:
+                categories["rest"].append(normalized_id)
+
+        def sort_key(order):
+            digits = re.sub(r"\D", "", str(order))
+            return (int(digits) if digits.isdigit() else float("inf"), str(order))
+
+        for key in categories:
+            categories[key] = sorted(set(categories[key]), key=sort_key)
+
+        print("Bestellungen in Kategorien unterteilt.")
+        return categories
     
     def calculate_total_quantities_by_item_type_per_order(self, data):
         """ Berechnet die Gesamtanzahl der bestellten LED-Untersetzer, Glas-Trinkhalme und Holzaufsteller pro Bestellung

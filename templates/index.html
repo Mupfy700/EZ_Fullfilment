@@ -108,8 +108,14 @@
             <label for="specific_name">Dateiname:</label>
             <input type="text" name="specific_name" required>
 
-            <label for="input_files">Dateien hochladen:</label>
-            <input type="file" name="input_files" multiple required>
+            <label for="csv_file">Bestell-CSV hochladen:</label>
+            <input type="file" name="csv_file" accept=".csv" required>
+
+            <label for="packing_slips">Lieferscheine (PDF, mehrere möglich):</label>
+            <input type="file" name="packing_slips" accept="application/pdf" multiple>
+
+            <label for="shipping_labels">Versandlabel (PDF, mehrere möglich):</label>
+            <input type="file" name="shipping_labels" accept="application/pdf" multiple>
 
             <button type="submit">Verarbeitung starten</button>
         </form>

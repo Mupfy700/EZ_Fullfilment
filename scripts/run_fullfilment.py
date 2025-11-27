@@ -1,7 +1,7 @@
 import os
 from ez_fullfilment.file_manager import FileManager
 
-def main(specific_name, input_folder, output_folder):
+def main(specific_name, input_folder, output_folder, packing_slip_files=None, shipping_label_files=None):
     if not specific_name or not input_folder or not output_folder:
         print("Eingaben nicht vollständig. Abbruch.")
         return
@@ -15,7 +15,13 @@ def main(specific_name, input_folder, output_folder):
     }
 
     # Verarbeite die Dateien mit dem FileManager
-    file_manager = FileManager(input_folder, output_folder, led_coaster_weight_map)
+    file_manager = FileManager(
+        input_folder,
+        output_folder,
+        led_coaster_weight_map,
+        packing_slip_files=packing_slip_files,
+        shipping_label_files=shipping_label_files,
+    )
     file_manager.process_files(specific_name)
     print("Verarbeitung abgeschlossen.")
 

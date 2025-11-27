@@ -7,6 +7,7 @@ setup(
     install_requires=[
         'pandas',
         'tk',
+        'PyPDF2',
     ],
     entry_points={
         'console_scripts': [

@@ -1,5 +1,7 @@
 import os
+import re
 import pandas as pd
+from PyPDF2 import PdfReader, PdfWriter
 from .data_processor import DataProcessor
 
 class FileManager:
@@ -7,6 +9,9 @@ class FileManager:
         self.input_folder = input_folder
         self.output_folder = output_folder
         self.processor = DataProcessor(led_coaster_weight_map)
+        self.marmor_sku_marker = "01010103"
+        self.schwarzer_marmor_sku_marker = "01010105"
+        self.accessory_skus = {"9999999998", "9999999999", "G00000001"}
 
     # Diese Funktion durchsucht den Eingabeordner nach allen CSV-Dateien,liest sie ein und kombiniert sie zu einem einzigen DataFrame.
     def merge_csv_files(self):
@@ -31,7 +36,7 @@ class FileManager:
         data.to_csv(output_path, index=False, sep=';', encoding='utf-8-sig')
         print(f"Daten gespeichert in {output_path}")
 
-    def process_files(self, specific_name):
+    def process_files(self, specific_name, delivery_note_files=None, shipping_label_files=None):
         try:
             combined_data = self.merge_csv_files()
             combined_data = self.processor.calculate_total_quantities_by_item_type_per_order(combined_data)
@@ -100,6 +105,9 @@ class FileManager:
         regular_data = self.processor.remove_columns(regular_data, ['Total LED Untersetzer', 'Total Glas Trinkhalme', 'Total Holzaufsteller', 'Shipping Street', 'Shipping Company', 'Shipping City', 'Shipping Zip'])
         self.save_to_csv(regular_data, f"{specific_name}_EZ_Originalz.csv")
 
+        order_sequence = self._collect_order_sequence(regular_data)
+        order_categories = self._categorize_orders(combined_data)
+
         #Manufacturer Total Costs
         cost_data = self.processor.add_manufacturer_costs(cleaned_data_manufacturer)
         cost_data = self.processor.remove_columns(cost_data, ['Shipping Street', 'Shipping Company', 'Shipping City', 'Shipping Zip'])
@@ -108,3 +116,218 @@ class FileManager:
         #Designübersicht
         design_overview = self.processor.generate_design_overview(regular_data)
         self.save_to_csv(design_overview, f"{specific_name}_Designübersicht.csv")
+
+        if delivery_note_files:
+            try:
+                self._combine_delivery_notes(
+                    delivery_note_files,
+                    order_sequence,
+                    order_categories,
+                    specific_name
+                )
+            except Exception as e:
+                print(f"Lieferscheine konnten nicht verarbeitet werden: {e}")
+
+        if shipping_label_files:
+            try:
+                self._combine_shipping_labels(
+                    shipping_label_files,
+                    order_sequence,
+                    order_categories,
+                    specific_name
+                )
+            except Exception as e:
+                print(f"Versandlabels konnten nicht verarbeitet werden: {e}")
+
+    @staticmethod
+    def _normalize_order_number(value):
+        if pd.isna(value):
+            return None
+        order = str(value).strip()
+        if order.startswith('#'):
+            order = order[1:]
+        return order if order else None
+
+    def _collect_order_sequence(self, data):
+        seen = set()
+        sequence = []
+        if 'Name' not in data.columns:
+            return sequence
+
+        for name in data['Name']:
+            normalized = self._normalize_order_number(name)
+            if normalized and normalized not in seen:
+                sequence.append(normalized)
+                seen.add(normalized)
+        return sequence
+
+    def _extract_order_number_from_text(self, text):
+        patterns = [
+            r'Bestellnummer\s*[:#]?\s*(\d+)',
+            r'Commande\s*#\s?(\d+)',
+            r'Order\s*#\s?(\d+)',
+            r'#\s?(\d{4,})'
+        ]
+
+        for pattern in patterns:
+            match = re.search(pattern, text, flags=re.IGNORECASE)
+            if match:
+                return self._normalize_order_number(match.group(1))
+        return None
+
+    def _split_delivery_note_pages(self, delivery_note_files):
+        delivery_notes = {}
+        unknown_counter = 1
+
+        for pdf_path in delivery_note_files:
+            reader = PdfReader(pdf_path)
+            current_order = None
+            current_pages = []
+
+            for page in reader.pages:
+                text = page.extract_text() or ''
+                order_number = self._extract_order_number_from_text(text)
+
+                if order_number:
+                    if current_order is None:
+                        current_order = order_number
+                    elif order_number != current_order:
+                        if current_pages:
+                            delivery_notes.setdefault(current_order, []).extend(current_pages)
+                        current_order = order_number
+                        current_pages = []
+                elif current_order is None:
+                    current_order = f"UNBEKANNT_{unknown_counter}"
+                    unknown_counter += 1
+
+                current_pages.append(page)
+
+            if current_pages and current_order:
+                delivery_notes.setdefault(current_order, []).extend(current_pages)
+
+        return delivery_notes
+
+    def _combine_delivery_notes(self, delivery_note_files, order_sequence, order_categories, output_basename):
+        delivery_notes = self._split_delivery_note_pages(delivery_note_files)
+        if not delivery_notes:
+            print("Keine Lieferscheine gefunden.")
+            return
+
+        writers = {
+            "marmor": PdfWriter(),
+            "schwarzer_marmor": PdfWriter(),
+            "rest": PdfWriter(),
+        }
+
+        added_orders = set()
+
+        def add_pages(order, pages):
+            category = order_categories.get(order, "rest")
+            writer = writers.get(category, writers["rest"])
+            for page in pages:
+                writer.add_page(page)
+            added_orders.add(order)
+
+        for order in order_sequence:
+            pages = delivery_notes.get(order)
+            if pages:
+                add_pages(order, pages)
+
+        for order, pages in delivery_notes.items():
+            if order in added_orders:
+                continue
+            add_pages(order, pages)
+
+        output_files = {
+            "marmor": f"{output_basename}_Lieferscheine_Marmor.pdf",
+            "schwarzer_marmor": f"{output_basename}_Lieferscheine_Schwarzer_Marmor.pdf",
+            "rest": f"{output_basename}_Lieferscheine_Rest.pdf",
+        }
+
+        for key, writer in writers.items():
+            if len(writer.pages) == 0:
+                continue
+            output_path = os.path.join(self.output_folder, output_files[key])
+            with open(output_path, 'wb') as output_pdf:
+                writer.write(output_pdf)
+            print(f"Lieferscheine ({key}) gespeichert in {output_path} (geordnet nach CSV-Reihenfolge).")
+
+    def _combine_shipping_labels(self, shipping_label_files, order_sequence, order_categories, output_basename):
+        labels = self._split_delivery_note_pages(shipping_label_files)
+        if not labels:
+            print("Keine Versandlabels gefunden.")
+            return
+
+        writers = {
+            "marmor": PdfWriter(),
+            "schwarzer_marmor": PdfWriter(),
+            "rest": PdfWriter(),
+        }
+
+        added_orders = set()
+
+        def add_pages(order, pages):
+            category = order_categories.get(order, "rest")
+            writer = writers.get(category, writers["rest"])
+            for page in pages:
+                writer.add_page(page)
+            added_orders.add(order)
+
+        for order in order_sequence:
+            pages = labels.get(order)
+            if pages:
+                add_pages(order, pages)
+
+        for order, pages in labels.items():
+            if order in added_orders:
+                continue
+            add_pages(order, pages)
+
+        output_files = {
+            "marmor": f"{output_basename}_Versandlabels_Marmor.pdf",
+            "schwarzer_marmor": f"{output_basename}_Versandlabels_Schwarzer_Marmor.pdf",
+            "rest": f"{output_basename}_Versandlabels_Rest.pdf",
+        }
+
+        for key, writer in writers.items():
+            if len(writer.pages) == 0:
+                continue
+            output_path = os.path.join(self.output_folder, output_files[key])
+            with open(output_path, 'wb') as output_pdf:
+                writer.write(output_pdf)
+            print(f"Versandlabels ({key}) gespeichert in {output_path} (geordnet nach CSV-Reihenfolge).")
+
+    def _categorize_orders(self, data):
+        categories = {}
+        if 'Name' not in data.columns or 'Lineitem sku' not in data.columns:
+            return categories
+
+        grouped = data.groupby('Name')
+        for name, group in grouped:
+            order = self._normalize_order_number(name)
+            if not order:
+                continue
+
+            led_rows = group[group['Lineitem name'].str.contains('Untersetzer', case=False, na=False)]
+
+            led_skus_all = set(
+                str(sku).strip()
+                for sku in led_rows['Lineitem sku'].dropna().astype(str)
+                if str(sku).strip() and str(sku).strip() not in self.accessory_skus
+            )
+
+            if not led_skus_all:
+                categories[order] = "rest"
+                continue
+
+            only_marmor = all(self.marmor_sku_marker in sku for sku in led_skus_all)
+            only_schwarzer_marmor = all(self.schwarzer_marmor_sku_marker in sku for sku in led_skus_all)
+
+            if only_marmor:
+                categories[order] = "marmor"
+            elif only_schwarzer_marmor:
+                categories[order] = "schwarzer_marmor"
+            else:
+                categories[order] = "rest"
+
+        return categories

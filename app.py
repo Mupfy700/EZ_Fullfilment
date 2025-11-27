@@ -14,6 +14,8 @@ def index():
     if request.method == "POST":
         specific_name = request.form["specific_name"]
         uploaded_files = request.files.getlist("input_files")
+        delivery_note_files = request.files.getlist("delivery_notes")
+        shipping_label_files = request.files.getlist("shipping_labels")
 
         if not uploaded_files or len(uploaded_files) == 0:
             error = "Bitte mindestens eine Datei hochladen."
@@ -33,14 +35,36 @@ def index():
 
         # Temporäres Verzeichnis für die Dateien erstellen
         temp_dir = tempfile.mkdtemp()
+        csv_dir = os.path.join(temp_dir, "csv")
+        pdf_dir = os.path.join(temp_dir, "delivery_notes")
+        os.makedirs(csv_dir, exist_ok=True)
+        os.makedirs(pdf_dir, exist_ok=True)
+        shipping_dir = os.path.join(temp_dir, "shipping_labels")
+        os.makedirs(shipping_dir, exist_ok=True)
 
         try:
             # Dateien speichern
             for file in uploaded_files:
-                file.save(os.path.join(temp_dir, file.filename))
+                file.save(os.path.join(csv_dir, file.filename))
+
+            delivery_note_paths = []
+            for file in delivery_note_files:
+                if not file.filename:
+                    continue
+                pdf_path = os.path.join(pdf_dir, file.filename)
+                file.save(pdf_path)
+                delivery_note_paths.append(pdf_path)
+
+            shipping_label_paths = []
+            for file in shipping_label_files:
+                if not file.filename:
+                    continue
+                pdf_path = os.path.join(shipping_dir, file.filename)
+                file.save(pdf_path)
+                shipping_label_paths.append(pdf_path)
 
             # Hauptverarbeitungsfunktion aufrufen
-            main(specific_name, temp_dir, RESULT_FOLDER)
+            main(specific_name, csv_dir, RESULT_FOLDER, delivery_note_paths, shipping_label_paths)
             return redirect(url_for("results"))
 
         except Exception as e:
@@ -72,4 +96,3 @@ def download_file(filename):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)), debug=True)
-

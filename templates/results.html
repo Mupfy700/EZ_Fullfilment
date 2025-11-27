@@ -148,11 +148,31 @@
     <div class="container">
         <h1>Ergebnisse herunterladen</h1>
 
+        {% set files = namespace(other=[], shipping_docs=[]) %}
+        {% for file in result_files %}
+            {% if 'Lieferscheine' in file or 'Versandlabels' in file %}
+                {% set files.shipping_docs = files.shipping_docs + [file] %}
+            {% else %}
+                {% set files.other = files.other + [file] %}
+            {% endif %}
+        {% endfor %}
+
         <ul>
-            {% for file in result_files %}
+            {% for file in files.other %}
                 <li><a href="{{ url_for('download_file', filename=file) }}">{{ file }}</a></li>
             {% endfor %}
         </ul>
+
+        {% if files.shipping_docs %}
+            <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(0,0,0,0.08);">
+                <h2 style="margin: 0 0 0.75rem 0; font-size: 1.2rem;">Lieferscheine & Versandlabels</h2>
+                <ul>
+                    {% for file in files.shipping_docs %}
+                        <li><a href="{{ url_for('download_file', filename=file) }}">{{ file }}</a></li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
 
         <form action="{{ url_for('download_all') }}" method="get">
             <button type="submit" class="btn">Alle Ergebnisse herunterladen (ZIP)</button>

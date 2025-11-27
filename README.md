@@ -1,6 +1,11 @@
 # EZ_Fullfilment
 Fulfilment Automation for EZ Originals Online Shop
 
+## 🧾 Lieferscheine verarbeiten
+- Auf der Startseite kannst du zusätzlich zu den CSVs auch PDF-Lieferscheine hochladen (eine oder mehrere Dateien, mehrseitig möglich).
+- Die Lieferscheine werden anhand der Bestellnummer (#) getrennt, nach der Reihenfolge in der erzeugten `_EZ_Originalz.csv` sortiert und als zusammenhängende PDF (`<Name>_Lieferscheine.pdf`) im `results/`-Ordner ausgegeben.
+- Zusätzlich werden drei PDFs erzeugt, sortiert nach LED-Design (SKUs aus `Lineitem sku`): nur Marmor (`01010103`), nur Schwarzer Marmor (`01010105`), Rest (alles andere oder gemischt). Zubehör-SKUs (`9999999998`, `9999999999`, `G00000001`) werden ignoriert.
+- Optional können auch Versandlabel-PDFs hochgeladen werden. Jede Seite ist ein Label mit Bestellnummer; sie werden identisch zu den Lieferscheinen nach Kategorien sortiert (`<Name>_Versandlabels_*.pdf`) und gelistet.
 
 ## 🚀 Deployment zur Google Cloud Run
 

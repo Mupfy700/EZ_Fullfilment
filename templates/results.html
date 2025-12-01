@@ -327,7 +327,13 @@
 
         <ul>
             {% for file in files.other %}
-                <li><a href="{{ url_for('download_file', filename=file) }}">{{ file }}</a></li>
+                <li>
+                    {% if gcs_enabled %}
+                        <a href="{{ signed_urls.get(file) }}">{{ file }}</a>
+                    {% else %}
+                        <a href="{{ url_for('download_file', filename=file) }}">{{ file }}</a>
+                    {% endif %}
+                </li>
             {% endfor %}
         </ul>
 
@@ -336,13 +342,19 @@
                 <h2 style="margin: 0 0 0.75rem 0; font-size: 1.2rem;">Lieferscheine & Versandlabels</h2>
                 <ul>
                     {% for file in files.shipping_docs %}
-                        <li><a href="{{ url_for('download_file', filename=file) }}">{{ file }}</a></li>
+                        <li>
+                            {% if gcs_enabled %}
+                                <a href="{{ signed_urls.get(file) }}">{{ file }}</a>
+                            {% else %}
+                                <a href="{{ url_for('download_file', filename=file) }}">{{ file }}</a>
+                            {% endif %}
+                        </li>
                     {% endfor %}
                 </ul>
             </div>
         {% endif %}
 
-        <form action="{{ url_for('download_all') }}" method="get">
+        <form action="{{ url_for('download_all') }}{% if gcs_enabled %}?session_id={{ session_id }}{% endif %}" method="get">
             <button type="submit" class="btn">Alle Ergebnisse herunterladen (ZIP)</button>
         </form>
 

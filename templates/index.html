@@ -104,7 +104,7 @@
             <p class="error">{{ error }}</p>
         {% endif %}
 
-        <form method="POST" enctype="multipart/form-data">
+        <form id="upload-form" method="POST" enctype="multipart/form-data">
             <label for="specific_name">Dateiname:</label>
             <input type="text" name="specific_name" required>
 
@@ -120,7 +120,118 @@
             <button type="submit">Verarbeitung starten</button>
         </form>
 
-        <p class="version">Version 6.0</p>
+        <div id="status" style="margin-top: 1rem; text-align: left; color: #444;"></div>
+
+        <p class="version">Version 6.2</p>
     </div>
+
+    <script>
+        const gcsEnabled = {{ 'true' if gcs_enabled else 'false' }};
+        const sessionId = "{{ session_id }}";
+
+        if (gcsEnabled) {
+            const form = document.getElementById('upload-form');
+            const statusEl = document.getElementById('status');
+
+            const setStatus = (msg, isError = false) => {
+                statusEl.textContent = msg;
+                statusEl.style.color = isError ? '#d64545' : '#444';
+            };
+
+            const getSignedUrl = async (file, fileType) => {
+                const res = await fetch('/api/sign-url', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        filename: file.name,
+                        content_type: file.type || 'application/octet-stream',
+                        session_id: sessionId,
+                        file_type: fileType
+                    })
+                });
+                if (!res.ok) {
+                    const text = await res.text();
+                    throw new Error(`Signed URL Fehler (${res.status}): ${text}`);
+                }
+                return res.json();
+            };
+
+            const uploadFile = async (file, fileType) => {
+                const { uploadUrl, objectPath } = await getSignedUrl(file, fileType);
+                const uploadRes = await fetch(uploadUrl, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': file.type || 'application/octet-stream' },
+                    body: file
+                });
+                if (!uploadRes.ok) {
+                    const text = await uploadRes.text();
+                    throw new Error(`Upload fehlgeschlagen (${uploadRes.status}): ${text}`);
+                }
+                return objectPath;
+            };
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const specificName = form.querySelector('input[name="specific_name"]').value.trim();
+                const csvFiles = form.querySelector('input[name="input_files"]').files;
+                const deliveryFiles = form.querySelector('input[name="delivery_notes"]').files;
+                const shippingFiles = form.querySelector('input[name="shipping_labels"]').files;
+
+                if (!specificName) {
+                    setStatus('Bitte einen Dateinamen angeben.', true);
+                    return;
+                }
+                if (!csvFiles || csvFiles.length === 0) {
+                    setStatus('Bitte mindestens eine CSV-Datei auswählen.', true);
+                    return;
+                }
+
+                setStatus('Uploads starten ...');
+                try {
+                    const csvPaths = [];
+                    for (const file of csvFiles) {
+                        setStatus(`Lade CSV hoch: ${file.name}`);
+                        csvPaths.push(await uploadFile(file, 'csv'));
+                    }
+
+                    const deliveryPaths = [];
+                    for (const file of deliveryFiles) {
+                        setStatus(`Lade Lieferscheine hoch: ${file.name}`);
+                        deliveryPaths.push(await uploadFile(file, 'delivery'));
+                    }
+
+                    const shippingPaths = [];
+                    for (const file of shippingFiles) {
+                        setStatus(`Lade Versandlabels hoch: ${file.name}`);
+                        shippingPaths.push(await uploadFile(file, 'shipping'));
+                    }
+
+                    setStatus('Verarbeitung in Cloud Run wird gestartet ...');
+                    const processRes = await fetch('/api/process', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            specific_name: specificName,
+                            session_id: sessionId,
+                            csv_files: csvPaths,
+                            delivery_notes: deliveryPaths,
+                            shipping_labels: shippingPaths
+                        })
+                    });
+
+                    if (!processRes.ok) {
+                        const text = await processRes.text();
+                        throw new Error(`Verarbeitung fehlgeschlagen (${processRes.status}): ${text}`);
+                    }
+
+                    setStatus('Ergebnisse werden geladen ...');
+                    window.location.href = `/results?session_id=${sessionId}`;
+                } catch (err) {
+                    console.error(err);
+                    setStatus(err.message || 'Ein Fehler ist aufgetreten.', true);
+                }
+            });
+        }
+    </script>
 </body>
 </html>

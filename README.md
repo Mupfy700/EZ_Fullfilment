@@ -44,6 +44,8 @@ gcloud run deploy ez-fullfilment \
   --allow-unauthenticated
 
 --------------------------- Komplettes Command-Set: ---------------------------
+gcloud config set project ez-fullfilment
+gcloud auth application-default set-quota-project ez-fullfilment
 docker build --platform=linux/amd64 -t ez_fullfilment .
 docker tag ez_fullfilment gcr.io/ez-fullfilment/ez_fullfilment
 docker push gcr.io/ez-fullfilment/ez_fullfilment
@@ -51,7 +53,12 @@ gcloud run deploy ez-fullfilment \
   --image gcr.io/ez-fullfilment/ez_fullfilment \
   --platform managed \
   --region europe-west1 \
-  --allow-unauthenticated
+  --allow-unauthenticated \
+  --service-account 412176435385-compute@developer.gserviceaccount.com \
+  --set-env-vars GCS_UPLOAD_BUCKET=ez-fullfilment-uploads-412176435385,\
+GCS_RESULTS_BUCKET=ez-fullfilment-results-412176435385,\
+SIGNED_URL_EXPIRATION_SECONDS=3600,\
+SIGNING_SERVICE_ACCOUNT=412176435385-compute@developer.gserviceaccount.com
 -------------------------------------------------------------------------------
 
 
@@ -65,6 +72,28 @@ CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:8080", "app:app"]
 
 
 --
+
+## ☁️ Cloud-Upload (GCS, große Dateien, Datenschutz)
+
+Um die 32 MB Request-Grenze zu umgehen, können die Dateien direkt in einen privaten Google Cloud Storage Bucket hochgeladen werden. Die App erzeugt signierte (kurzlebige) Upload-URLs; die Daten gehen nur in den Bucket und werden nach der Verarbeitung auf Wunsch wieder gelöscht.
+
+1. Bucket vorbereiten  
+   - Lege einen **privaten** Bucket an (keine Public Access).  
+   - Verwende ein Service Account mit mind. `storage.objects.create`, `storage.objects.get`, `storage.objects.delete` auf dem Bucket.
+2. Env-Variablen setzen (z. B. in Cloud Run):  
+   - `UPLOAD_MODE=cloud`  
+   - `GCS_BUCKET=<dein-bucket-name>`  
+   - optional `SIGNED_URL_EXPIRATION=900` (Sekunden, Default 900/15 Min)  
+   - optional `DELETE_UPLOADS_AFTER_PROCESSING=true` (Uploads nach dem Download aus GCS löschen)
+3. Frontend-Flow  
+   - Die Startseite zeigt „Cloud-Modus“.  
+   - Beim Klick auf „Verarbeitung starten“ werden signierte URLs angefordert und die Dateien direkt in den Bucket hochgeladen.  
+   - Danach lädt der Server die Dateien aus GCS, verarbeitet sie wie gewohnt und speichert die Ergebnisse in `results/`.
+4. Datenschutz  
+   - Bucket bleibt privat; signierte URLs laufen nach wenigen Minuten ab.  
+   - Empfohlen: Cloud Run nur für authentifizierte Nutzer betreiben (IAM/IAP), damit niemand unberechtigt Upload-Links anfordern kann.
+
+Im lokalen Modus (Standard, `UPLOAD_MODE=local`) bleibt das Verhalten unverändert.
 
 ## 🖥️ Lokales Testen des Skripts
 

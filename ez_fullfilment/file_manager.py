@@ -37,12 +37,26 @@ class FileManager:
         print(f"Daten gespeichert in {output_path}")
 
     def process_files(self, specific_name, delivery_note_files=None, shipping_label_files=None):
+        stats = {
+            "upload_order_count": 0,
+            "processed_order_count": 0,
+            "upload_delivery_notes_page_count": 0,
+            "upload_delivery_notes_order_count": 0,
+            "processed_delivery_notes_page_count": 0,
+            "processed_delivery_notes_order_count": 0,
+            "upload_shipping_labels_count": 0,
+            "processed_shipping_labels_count": 0,
+        }
         try:
             combined_data = self.merge_csv_files()
             combined_data = self.processor.calculate_total_quantities_by_item_type_per_order(combined_data)
         except Exception as e:
             print(f"Fehler bei der Verarbeitung der Dateien: {e}")
-            return
+            return stats
+
+        # Upload-Bestellungen zählen (Rohdaten)
+        if 'Name' in combined_data.columns:
+            stats["upload_order_count"] = combined_data['Name'].dropna().map(self._normalize_order_number).dropna().nunique()
 
         columns_to_remove_dhl = [
              "Financial Status", "Paid at", "Fulfillment Status", "Fulfilled at", "Accepts Marketing", "Currency",
@@ -117,27 +131,39 @@ class FileManager:
         design_overview = self.processor.generate_design_overview(regular_data)
         self.save_to_csv(design_overview, f"{specific_name}_Designübersicht.csv")
 
+        stats["processed_order_count"] = len(order_sequence)
+
         if delivery_note_files:
+            delivery_notes = self._split_delivery_note_pages(delivery_note_files)
+            stats["upload_delivery_notes_order_count"] = len(delivery_notes.keys())
+            stats["upload_delivery_notes_page_count"] = sum(len(pages) for pages in delivery_notes.values())
             try:
-                self._combine_delivery_notes(
-                    delivery_note_files,
+                delivery_stats = self._combine_delivery_notes(
+                    delivery_notes,
                     order_sequence,
                     order_categories,
                     specific_name
                 )
+                if isinstance(delivery_stats, dict):
+                    stats["processed_delivery_notes_page_count"] = int(delivery_stats.get("pages", 0) or 0)
+                    stats["processed_delivery_notes_order_count"] = int(delivery_stats.get("orders", 0) or 0)
             except Exception as e:
                 print(f"Lieferscheine konnten nicht verarbeitet werden: {e}")
 
         if shipping_label_files:
+            labels = self._split_delivery_note_pages(shipping_label_files)
+            stats["upload_shipping_labels_count"] = sum(len(pages) for pages in labels.values())
             try:
-                self._combine_shipping_labels(
-                    shipping_label_files,
+                stats["processed_shipping_labels_count"] = self._combine_shipping_labels(
+                    labels,
                     order_sequence,
                     order_categories,
                     specific_name
                 )
             except Exception as e:
                 print(f"Versandlabels konnten nicht verarbeitet werden: {e}")
+
+        return stats
 
     @staticmethod
     def _normalize_order_number(value):
@@ -207,11 +233,13 @@ class FileManager:
 
         return delivery_notes
 
-    def _combine_delivery_notes(self, delivery_note_files, order_sequence, order_categories, output_basename):
-        delivery_notes = self._split_delivery_note_pages(delivery_note_files)
+    def _combine_delivery_notes(self, delivery_notes, order_sequence, order_categories, output_basename):
         if not delivery_notes:
             print("Keine Lieferscheine gefunden.")
-            return
+            return {"pages": 0, "orders": 0}
+
+        total_pages = sum(len(pages) for pages in delivery_notes.values())
+        total_orders = len(delivery_notes.keys())
 
         writers = {
             "marmor": PdfWriter(),
@@ -251,12 +279,14 @@ class FileManager:
             with open(output_path, 'wb') as output_pdf:
                 writer.write(output_pdf)
             print(f"Lieferscheine ({key}) gespeichert in {output_path} (geordnet nach CSV-Reihenfolge).")
+        return {"pages": total_pages, "orders": total_orders}
 
-    def _combine_shipping_labels(self, shipping_label_files, order_sequence, order_categories, output_basename):
-        labels = self._split_delivery_note_pages(shipping_label_files)
+    def _combine_shipping_labels(self, labels, order_sequence, order_categories, output_basename):
         if not labels:
             print("Keine Versandlabels gefunden.")
-            return
+            return 0
+
+        total_pages = sum(len(pages) for pages in labels.values())
 
         writers = {
             "marmor": PdfWriter(),
@@ -296,6 +326,7 @@ class FileManager:
             with open(output_path, 'wb') as output_pdf:
                 writer.write(output_pdf)
             print(f"Versandlabels ({key}) gespeichert in {output_path} (geordnet nach CSV-Reihenfolge).")
+        return total_pages
 
     def _categorize_orders(self, data):
         categories = {}

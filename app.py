@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, send_file
+import json
 import os
 import tempfile
 import zipfile
@@ -6,7 +7,46 @@ from scripts.run_fullfilment import main
 
 app = Flask(__name__)
 RESULT_FOLDER = "results"
+STATS_FILE = os.path.join(RESULT_FOLDER, "stats.json")
 os.makedirs(RESULT_FOLDER, exist_ok=True)
+DEFAULT_STATS = {
+    "upload_order_count": 0,
+    "processed_order_count": 0,
+    "upload_delivery_notes_page_count": 0,
+    "upload_delivery_notes_order_count": 0,
+    "processed_delivery_notes_page_count": 0,
+    "processed_delivery_notes_order_count": 0,
+    "upload_shipping_labels_count": 0,
+    "processed_shipping_labels_count": 0,
+}
+
+def _save_stats(stats: dict):
+    try:
+        with open(STATS_FILE, "w", encoding="utf-8") as f:
+            json.dump(stats, f)
+    except OSError as exc:
+        print(f"Statistiken konnten nicht gespeichert werden: {exc}")
+
+
+def _load_stats():
+    if not os.path.isfile(STATS_FILE):
+        return DEFAULT_STATS.copy()
+    try:
+        with open(STATS_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return {
+                "upload_order_count": int(data.get("upload_order_count", 0) or 0),
+                "processed_order_count": int(data.get("processed_order_count", 0) or 0),
+                "upload_delivery_notes_page_count": int(data.get("upload_delivery_notes_page_count", 0) or 0),
+                "upload_delivery_notes_order_count": int(data.get("upload_delivery_notes_order_count", 0) or 0),
+                "processed_delivery_notes_page_count": int(data.get("processed_delivery_notes_page_count", 0) or 0),
+                "processed_delivery_notes_order_count": int(data.get("processed_delivery_notes_order_count", 0) or 0),
+                "upload_shipping_labels_count": int(data.get("upload_shipping_labels_count", 0) or 0),
+                "processed_shipping_labels_count": int(data.get("processed_shipping_labels_count", 0) or 0),
+            }
+    except Exception as exc:
+        print(f"Statistiken konnten nicht geladen werden: {exc}")
+        return DEFAULT_STATS.copy()
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -64,7 +104,15 @@ def index():
                 shipping_label_paths.append(pdf_path)
 
             # Hauptverarbeitungsfunktion aufrufen
-            main(specific_name, csv_dir, RESULT_FOLDER, delivery_note_paths, shipping_label_paths)
+            run_stats = main(specific_name, csv_dir, RESULT_FOLDER, delivery_note_paths, shipping_label_paths)
+            if isinstance(run_stats, dict):
+                stats_to_store = DEFAULT_STATS.copy()
+                for key in stats_to_store.keys():
+                    stats_to_store[key] = int(run_stats.get(key, 0) or 0)
+            else:
+                stats_to_store = DEFAULT_STATS.copy()
+
+            _save_stats(stats_to_store)
             return redirect(url_for("results"))
 
         except Exception as e:
@@ -76,7 +124,8 @@ def index():
 @app.route("/results", methods=["GET"])
 def results():
     result_files = os.listdir(RESULT_FOLDER)
-    return render_template("results.html", result_files=result_files)
+    stats = _load_stats()
+    return render_template("results.html", result_files=result_files, stats=stats)
 
 
 @app.route("/download_all", methods=["GET"])

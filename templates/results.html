@@ -139,6 +139,103 @@
             color: #444;
         }
 
+        .stats-card {
+            margin: 0 0 1.5rem 0;
+            background: linear-gradient(135deg, rgba(79, 24, 81, 0.08), rgba(252, 168, 33, 0.08));
+            border-radius: 16px;
+            padding: 1.5rem;
+            text-align: left;
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .stats-card h2 {
+            margin: 0 0 1rem 0;
+            font-size: 1.15rem;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .stats-columns {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 1rem;
+        }
+
+        .stats-column {
+            background: rgba(255,255,255,0.7);
+            border-radius: 12px;
+            padding: 1rem;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.04);
+            border: 1px solid rgba(0,0,0,0.04);
+        }
+
+        .stats-column h3 {
+            margin: 0 0 0.75rem 0;
+            font-size: 1rem;
+            color: #444;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 0.75rem;
+        }
+
+        .stat {
+            background: var(--bg);
+            border-radius: 12px;
+            padding: 0.9rem 1rem;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.04);
+            border: 1px solid rgba(0,0,0,0.04);
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #555;
+            margin-bottom: 0.35rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .stat-value {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.15rem 0.6rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .tag.ok {
+            background: #1f9d55;
+            box-shadow: 0 4px 12px rgba(31, 157, 85, 0.25);
+        }
+
+        .tag.bad {
+            background: #d64545;
+            box-shadow: 0 4px 12px rgba(214, 69, 69, 0.25);
+        }
+
+        .stat-note {
+            margin-top: 0.8rem;
+            color: #555;
+            font-size: 0.85rem;
+        }
+
     </style>
 </head>
 <body>
@@ -146,6 +243,77 @@
     <img src="{{ url_for('static', filename='logo.png') }}" alt="EZ Originalz Logo" class="logo">
 
     <div class="container">
+        {% set overall_match = stats.processed_order_count == stats.processed_delivery_notes_order_count == stats.processed_shipping_labels_count %}
+        <div class="stats-card">
+            <h2>
+                📊 Lauf-Info
+                <span class="tag {{ 'ok' if overall_match else 'bad' }}" style="margin-left: 0.6rem;">
+                    {{ 'Alles passt' if overall_match else 'Abweichung' }}
+                </span>
+            </h2>
+            <div class="stats-columns">
+                <div class="stats-column">
+                    <h3>⬆️ Upload</h3>
+                    <div class="stats-grid">
+                        <div class="stat">
+                            <div class="stat-label">Gesamtzahl Bestellungen</div>
+                            <div class="stat-value">{{ stats.upload_order_count }}</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">Lieferscheine (Bestellungen)</div>
+                            <div class="stat-value">{{ stats.upload_delivery_notes_order_count }}</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">Lieferscheine (Einzelseiten)</div>
+                            <div class="stat-value">{{ stats.upload_delivery_notes_page_count }}</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">Versandlabels (Einzelseiten)</div>
+                            <div class="stat-value">{{ stats.upload_shipping_labels_count }}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="stats-column">
+                    <h3>✅ Verarbeitung</h3>
+                    <div class="stats-grid">
+                        {% set match_orders = stats.upload_order_count == stats.processed_order_count %}
+                        <div class="stat">
+                            <div class="stat-label">
+                                <span>Gesamtzahl Bestellungen</span>
+                                <span class="tag {{ 'ok' if match_orders else 'bad' }}">{{ 'OK' if match_orders else 'Abweichung' }}</span>
+                            </div>
+                            <div class="stat-value">{{ stats.processed_order_count }}</div>
+                        </div>
+                        {% set match_dn_orders = stats.upload_delivery_notes_order_count == stats.processed_delivery_notes_order_count %}
+                        <div class="stat">
+                            <div class="stat-label">
+                                <span>Lieferscheine (Bestellungen)</span>
+                                <span class="tag {{ 'ok' if match_dn_orders else 'bad' }}">{{ 'OK' if match_dn_orders else 'Abweichung' }}</span>
+                            </div>
+                            <div class="stat-value">{{ stats.processed_delivery_notes_order_count }}</div>
+                        </div>
+                        {% set match_dn_pages = stats.upload_delivery_notes_page_count == stats.processed_delivery_notes_page_count %}
+                        <div class="stat">
+                            <div class="stat-label">
+                                <span>Lieferscheine (Einzelseiten)</span>
+                                <span class="tag {{ 'ok' if match_dn_pages else 'bad' }}">{{ 'OK' if match_dn_pages else 'Abweichung' }}</span>
+                            </div>
+                            <div class="stat-value">{{ stats.processed_delivery_notes_page_count }}</div>
+                        </div>
+                        {% set match_labels = stats.upload_shipping_labels_count == stats.processed_shipping_labels_count %}
+                        <div class="stat">
+                            <div class="stat-label">
+                                <span>Versandlabels (Einzelseiten)</span>
+                                <span class="tag {{ 'ok' if match_labels else 'bad' }}">{{ 'OK' if match_labels else 'Abweichung' }}</span>
+                            </div>
+                            <div class="stat-value">{{ stats.processed_shipping_labels_count }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <p class="stat-note">Angaben beziehen sich auf die zuletzt verarbeiteten Uploads.</p>
+        </div>
+
         <h1>Ergebnisse herunterladen</h1>
 
         {% set files = namespace(other=[], shipping_docs=[]) %}

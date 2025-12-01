@@ -16,8 +16,9 @@ def main(specific_name, input_folder, output_folder, delivery_note_files=None, s
 
     # Verarbeite die Dateien mit dem FileManager
     file_manager = FileManager(input_folder, output_folder, led_coaster_weight_map)
-    file_manager.process_files(specific_name, delivery_note_files or [], shipping_label_files or [])
+    run_stats = file_manager.process_files(specific_name, delivery_note_files or [], shipping_label_files or [])
     print("Verarbeitung abgeschlossen.")
+    return run_stats
 
 if __name__ == "__main__":
     # Beispielwerte für lokale Tests, diese werden durch die Flask-App überschrieben

@@ -61,6 +61,22 @@ SIGNED_URL_EXPIRATION_SECONDS=3600,\
 SIGNING_SERVICE_ACCOUNT=412176435385-compute@developer.gserviceaccount.com
 -------------------------------------------------------------------------------
 
+gcloud run deploy ez-fullfilment \
+  --image gcr.io/ez-fullfilment/ez_fullfilment \
+  --platform managed \
+  --region europe-west1 \
+  --allow-unauthenticated \
+  --service-account 412176435385-compute@developer.gserviceaccount.com \
+  --memory=2Gi \
+  --cpu=2 \
+  --concurrency=1 \
+  --timeout=900 \
+  --set-env-vars GCS_UPLOAD_BUCKET=ez-fullfilment-uploads-412176435385,\
+GCS_RESULTS_BUCKET=ez-fullfilment-results-412176435385,\
+SIGNED_URL_EXPIRATION_SECONDS=3600,\
+SIGNING_SERVICE_ACCOUNT=412176435385-compute@developer.gserviceaccount.com
+
+
 
 💡 Hinweise
 Wichtig: Verwende --platform=linux/amd64, wenn du auf einem Apple Silicon (M1/M2) Mac arbeitest.

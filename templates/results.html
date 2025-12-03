@@ -354,9 +354,13 @@
             </div>
         {% endif %}
 
-        <form action="{{ url_for('download_all') }}{% if gcs_enabled %}?session_id={{ session_id }}{% endif %}" method="get">
+        <form action="{{ url_for('download_all') }}" method="get">
+            {% if gcs_enabled %}
+                <input type="hidden" name="session_id" value="{{ session_id }}">
+            {% endif %}
             <button type="submit" class="btn">Alle Ergebnisse herunterladen (ZIP)</button>
         </form>
+
 
         <a href="{{ url_for('index') }}" class="back-link">← Zurück zur Startseite</a>
     </div>

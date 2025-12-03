@@ -154,7 +154,12 @@ def _list_result_files(session_id: str):
     files = {}
     ordered_names = []
     for blob in bucket.list_blobs(prefix=prefix):
-        if blob.name.endswith("/") or blob.name.endswith("stats.json"):
+        # stats.json und results.zip nicht in der Liste anzeigen
+        if (
+            blob.name.endswith("/")
+            or blob.name.endswith("stats.json")
+            or blob.name.endswith("results.zip")
+        ):
             continue
         filename = os.path.basename(blob.name)
         files[filename] = _generate_signed_download_url(GCS_RESULTS_BUCKET, blob.name)

@@ -11,6 +11,7 @@ class FileManager:
         self.processor = DataProcessor(led_coaster_weight_map)
         self.marmor_sku_marker = "01010103"
         self.schwarzer_marmor_sku_marker = "01010105"
+        self.kristall_sku_marker = "01010106"
         self.accessory_skus = {"9999999998", "9999999999", "G00000001"}
 
     # Diese Funktion durchsucht den Eingabeordner nach allen CSV-Dateien,liest sie ein und kombiniert sie zu einem einzigen DataFrame.
@@ -244,6 +245,7 @@ class FileManager:
         writers = {
             "marmor": PdfWriter(),
             "schwarzer_marmor": PdfWriter(),
+            "kristall": PdfWriter(),
             "rest": PdfWriter(),
         }
 
@@ -269,6 +271,7 @@ class FileManager:
         output_files = {
             "marmor": f"{output_basename}_Lieferscheine_Marmor.pdf",
             "schwarzer_marmor": f"{output_basename}_Lieferscheine_Schwarzer_Marmor.pdf",
+            "kristall": f"{output_basename}_Lieferscheine_Kristall.pdf",
             "rest": f"{output_basename}_Lieferscheine_Rest.pdf",
         }
 
@@ -291,6 +294,7 @@ class FileManager:
         writers = {
             "marmor": PdfWriter(),
             "schwarzer_marmor": PdfWriter(),
+            "kristall": PdfWriter(),
             "rest": PdfWriter(),
         }
 
@@ -316,6 +320,7 @@ class FileManager:
         output_files = {
             "marmor": f"{output_basename}_Versandlabels_Marmor.pdf",
             "schwarzer_marmor": f"{output_basename}_Versandlabels_Schwarzer_Marmor.pdf",
+            "kristall": f"{output_basename}_Versandlabels_Kristall.pdf",
             "rest": f"{output_basename}_Versandlabels_Rest.pdf",
         }
 
@@ -353,11 +358,14 @@ class FileManager:
 
             only_marmor = all(self.marmor_sku_marker in sku for sku in led_skus_all)
             only_schwarzer_marmor = all(self.schwarzer_marmor_sku_marker in sku for sku in led_skus_all)
+            only_kristall = all(self.kristall_sku_marker in sku for sku in led_skus_all)
 
             if only_marmor:
                 categories[order] = "marmor"
             elif only_schwarzer_marmor:
                 categories[order] = "schwarzer_marmor"
+            elif only_kristall:
+                categories[order] = "kristall"
             else:
                 categories[order] = "rest"
 

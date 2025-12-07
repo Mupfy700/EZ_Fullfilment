@@ -12,6 +12,9 @@ class FileManager:
         self.marmor_sku_marker = "01010103"
         self.schwarzer_marmor_sku_marker = "01010105"
         self.kristall_sku_marker = "01010106"
+        self.universum_sku_marker = "01010104"
+        self.anthrazit_sku_marker = "10010105"
+        self.schwarz_sku_marker = "10010104"
         self.accessory_skus = {"9999999998", "9999999999", "G00000001"}
 
     # Diese Funktion durchsucht den Eingabeordner nach allen CSV-Dateien,liest sie ein und kombiniert sie zu einem einzigen DataFrame.
@@ -246,6 +249,9 @@ class FileManager:
             "marmor": PdfWriter(),
             "schwarzer_marmor": PdfWriter(),
             "kristall": PdfWriter(),
+            "universum": PdfWriter(),
+            "anthrazit": PdfWriter(),
+            "schwarz": PdfWriter(),
             "rest": PdfWriter(),
         }
 
@@ -272,6 +278,9 @@ class FileManager:
             "marmor": f"{output_basename}_Lieferscheine_Marmor.pdf",
             "schwarzer_marmor": f"{output_basename}_Lieferscheine_Schwarzer_Marmor.pdf",
             "kristall": f"{output_basename}_Lieferscheine_Kristall.pdf",
+            "universum": f"{output_basename}_Lieferscheine_Universum.pdf",
+            "anthrazit": f"{output_basename}_Lieferscheine_Anthrazit.pdf",
+            "schwarz": f"{output_basename}_Lieferscheine_Schwarz.pdf",
             "rest": f"{output_basename}_Lieferscheine_Rest.pdf",
         }
 
@@ -295,6 +304,9 @@ class FileManager:
             "marmor": PdfWriter(),
             "schwarzer_marmor": PdfWriter(),
             "kristall": PdfWriter(),
+            "universum": PdfWriter(),
+            "anthrazit": PdfWriter(),
+            "schwarz": PdfWriter(),
             "rest": PdfWriter(),
         }
 
@@ -321,6 +333,9 @@ class FileManager:
             "marmor": f"{output_basename}_Versandlabels_Marmor.pdf",
             "schwarzer_marmor": f"{output_basename}_Versandlabels_Schwarzer_Marmor.pdf",
             "kristall": f"{output_basename}_Versandlabels_Kristall.pdf",
+            "universum": f"{output_basename}_Versandlabels_Universum.pdf",
+            "anthrazit": f"{output_basename}_Versandlabels_Anthrazit.pdf",
+            "schwarz": f"{output_basename}_Versandlabels_Schwarz.pdf",
             "rest": f"{output_basename}_Versandlabels_Rest.pdf",
         }
 
@@ -359,6 +374,9 @@ class FileManager:
             only_marmor = all(self.marmor_sku_marker in sku for sku in led_skus_all)
             only_schwarzer_marmor = all(self.schwarzer_marmor_sku_marker in sku for sku in led_skus_all)
             only_kristall = all(self.kristall_sku_marker in sku for sku in led_skus_all)
+            only_universum = all(self.universum_sku_marker in sku for sku in led_skus_all)
+            only_anthrazit = all(self.anthrazit_sku_marker in sku for sku in led_skus_all)
+            only_schwarz = all(self.schwarz_sku_marker in sku for sku in led_skus_all)
 
             if only_marmor:
                 categories[order] = "marmor"
@@ -366,6 +384,12 @@ class FileManager:
                 categories[order] = "schwarzer_marmor"
             elif only_kristall:
                 categories[order] = "kristall"
+            elif only_universum:
+                categories[order] = "universum"
+            elif only_anthrazit:
+                categories[order] = "anthrazit"
+            elif only_schwarz:
+                categories[order] = "schwarz"
             else:
                 categories[order] = "rest"
 

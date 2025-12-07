@@ -4,7 +4,7 @@ Fulfilment Automation for EZ Originals Online Shop
 ## 🧾 Lieferscheine verarbeiten
 - Auf der Startseite kannst du zusätzlich zu den CSVs auch PDF-Lieferscheine hochladen (eine oder mehrere Dateien, mehrseitig möglich).
 - Die Lieferscheine werden anhand der Bestellnummer (#) getrennt, nach der Reihenfolge in der erzeugten `_EZ_Originalz.csv` sortiert und als zusammenhängende PDF (`<Name>_Lieferscheine.pdf`) im `results/`-Ordner ausgegeben.
-- Zusätzlich werden vier PDFs erzeugt, sortiert nach LED-Design (SKUs aus `Lineitem sku`): nur Marmor (`01010103`), nur Schwarzer Marmor (`01010105`), nur Kristall (`01010106`), Rest (alles andere oder gemischt). Zubehör-SKUs (`9999999998`, `9999999999`, `G00000001`) werden ignoriert.
+- Zusätzlich werden sieben PDFs erzeugt, sortiert nach LED-Design (SKUs aus `Lineitem sku`): nur Marmor (`01010103`), nur Schwarzer Marmor (`01010105`), nur Kristall (`01010106`), nur Universum (`01010104`), nur Anthrazit (`10010105`), nur Schwarz (`10010104`), Rest (alles andere oder gemischt). Zubehör-SKUs (`9999999998`, `9999999999`, `G00000001`) werden ignoriert.
 - Optional können auch Versandlabel-PDFs hochgeladen werden. Jede Seite ist ein Label mit Bestellnummer; sie werden identisch zu den Lieferscheinen nach Kategorien sortiert (`<Name>_Versandlabels_*.pdf`) und gelistet.
 
 ## 🚀 Deployment zur Google Cloud Run
@@ -60,21 +60,6 @@ GCS_RESULTS_BUCKET=ez-fullfilment-results-412176435385,\
 SIGNED_URL_EXPIRATION_SECONDS=3600,\
 SIGNING_SERVICE_ACCOUNT=412176435385-compute@developer.gserviceaccount.com
 -------------------------------------------------------------------------------
-
-gcloud run deploy ez-fullfilment \
-  --image gcr.io/ez-fullfilment/ez_fullfilment \
-  --platform managed \
-  --region europe-west1 \
-  --allow-unauthenticated \
-  --service-account 412176435385-compute@developer.gserviceaccount.com \
-  --memory=2Gi \
-  --cpu=2 \
-  --concurrency=1 \
-  --timeout=900 \
-  --set-env-vars GCS_UPLOAD_BUCKET=ez-fullfilment-uploads-412176435385,\
-GCS_RESULTS_BUCKET=ez-fullfilment-results-412176435385,\
-SIGNED_URL_EXPIRATION_SECONDS=3600,\
-SIGNING_SERVICE_ACCOUNT=412176435385-compute@developer.gserviceaccount.com
 
 
 

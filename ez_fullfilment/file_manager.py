@@ -246,7 +246,9 @@ class FileManager:
         total_orders = len(delivery_notes.keys())
 
         writers = {
+            "marmor_warmweiss": PdfWriter(),
             "marmor": PdfWriter(),
+            "schwarzer_marmor_warmweiss": PdfWriter(),
             "schwarzer_marmor": PdfWriter(),
             "kristall": PdfWriter(),
             "universum": PdfWriter(),
@@ -275,8 +277,10 @@ class FileManager:
             add_pages(order, pages)
 
         output_files = {
-            "marmor": f"{output_basename}_Lieferscheine_Marmor.pdf",
-            "schwarzer_marmor": f"{output_basename}_Lieferscheine_Schwarzer_Marmor.pdf",
+            "marmor_warmweiss": f"{output_basename}_Lieferscheine_Marmor_Warmweiss.pdf",
+            "marmor": f"{output_basename}_Lieferscheine_Marmor_Rest.pdf",
+            "schwarzer_marmor_warmweiss": f"{output_basename}_Lieferscheine_Schwarzer_Marmor_Warmweiss.pdf",
+            "schwarzer_marmor": f"{output_basename}_Lieferscheine_Schwarzer_Marmor_Rest.pdf",
             "kristall": f"{output_basename}_Lieferscheine_Kristall.pdf",
             "universum": f"{output_basename}_Lieferscheine_Universum.pdf",
             "anthrazit": f"{output_basename}_Lieferscheine_Anthrazit.pdf",
@@ -301,7 +305,9 @@ class FileManager:
         total_pages = sum(len(pages) for pages in labels.values())
 
         writers = {
+            "marmor_warmweiss": PdfWriter(),
             "marmor": PdfWriter(),
+            "schwarzer_marmor_warmweiss": PdfWriter(),
             "schwarzer_marmor": PdfWriter(),
             "kristall": PdfWriter(),
             "universum": PdfWriter(),
@@ -330,8 +336,10 @@ class FileManager:
             add_pages(order, pages)
 
         output_files = {
-            "marmor": f"{output_basename}_Versandlabels_Marmor.pdf",
-            "schwarzer_marmor": f"{output_basename}_Versandlabels_Schwarzer_Marmor.pdf",
+            "marmor_warmweiss": f"{output_basename}_Versandlabels_Marmor_Warmweiss.pdf",
+            "marmor": f"{output_basename}_Versandlabels_Marmor_Rest.pdf",
+            "schwarzer_marmor_warmweiss": f"{output_basename}_Versandlabels_Schwarzer_Marmor_Warmweiss.pdf",
+            "schwarzer_marmor": f"{output_basename}_Versandlabels_Schwarzer_Marmor_Rest.pdf",
             "kristall": f"{output_basename}_Versandlabels_Kristall.pdf",
             "universum": f"{output_basename}_Versandlabels_Universum.pdf",
             "anthrazit": f"{output_basename}_Versandlabels_Anthrazit.pdf",
@@ -377,11 +385,12 @@ class FileManager:
             only_universum = all(self.universum_sku_marker in sku for sku in led_skus_all)
             only_anthrazit = all(self.anthrazit_sku_marker in sku for sku in led_skus_all)
             only_schwarz = all(self.schwarz_sku_marker in sku for sku in led_skus_all)
+            warmweiss_only = all(str(sku).upper().endswith("W") for sku in led_skus_all)
 
             if only_marmor:
-                categories[order] = "marmor"
+                categories[order] = "marmor_warmweiss" if warmweiss_only else "marmor"
             elif only_schwarzer_marmor:
-                categories[order] = "schwarzer_marmor"
+                categories[order] = "schwarzer_marmor_warmweiss" if warmweiss_only else "schwarzer_marmor"
             elif only_kristall:
                 categories[order] = "kristall"
             elif only_universum:

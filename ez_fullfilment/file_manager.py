@@ -15,7 +15,7 @@ class FileManager:
         self.universum_sku_marker = "01010104"
         self.anthrazit_sku_marker = "10010105"
         self.schwarz_sku_marker = "10010104"
-        self.accessory_skus = {"9999999998", "9999999999", "G00000001"}
+        self.accessory_skus = {"9999999998", "9999999999", "G00000001", "20269998"}
 
     # Diese Funktion durchsucht den Eingabeordner nach allen CSV-Dateien,liest sie ein und kombiniert sie zu einem einzigen DataFrame.
     def merge_csv_files(self):
@@ -93,7 +93,7 @@ class FileManager:
 
         cleaned_data_dhl = self.processor.remove_duplicates(cleaned_data_dhl)
         cleaned_data_dhl = self.processor.add_weight_column(cleaned_data_dhl)
-        cleaned_data_dhl = self.processor.remove_columns(cleaned_data_dhl, ['Total LED Untersetzer', 'Total Glas Trinkhalme', 'Total Holzaufsteller'])
+        cleaned_data_dhl = self.processor.remove_columns(cleaned_data_dhl, ['Total LED Untersetzer', 'Total Glas Trinkhalme', 'Total Holzaufsteller', 'Total Prisma Kristallgläser'])
 
         cleaned_data_dhl = self.processor.split_shipping_street(cleaned_data_dhl)
 
@@ -120,7 +120,7 @@ class FileManager:
 
         #Manufacturer Data
         regular_data = cleaned_data_manufacturer.copy()
-        regular_data = self.processor.remove_columns(regular_data, ['Total LED Untersetzer', 'Total Glas Trinkhalme', 'Total Holzaufsteller', 'Shipping Street', 'Shipping Company', 'Shipping City', 'Shipping Zip'])
+        regular_data = self.processor.remove_columns(regular_data, ['Total LED Untersetzer', 'Total Glas Trinkhalme', 'Total Holzaufsteller', 'Total Prisma Kristallgläser', 'Shipping Street', 'Shipping Company', 'Shipping Name', 'Shipping City', 'Shipping Zip'])
         self.save_to_csv(regular_data, f"{specific_name}_EZ_Originalz.csv")
 
         order_sequence = self._collect_order_sequence(regular_data)

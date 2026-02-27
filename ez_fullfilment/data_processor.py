@@ -51,15 +51,30 @@ class DataProcessor:
             .reset_index(name='Total Holzaufsteller')
         )
 
+        # 2 Prisma-Kristallgläser (SKU 20269998)
+        prisma_sku = "20269998"
+        if 'Lineitem sku' in data.columns:
+            prisma_mask = data['Lineitem sku'].astype(str).str.strip().eq(prisma_sku)
+            prisma_sums = (
+                data[prisma_mask]
+                .groupby('Name')['Lineitem quantity']
+                .sum()
+                .reset_index(name='Total Prisma Kristallgläser')
+            )
+        else:
+            prisma_sums = pd.DataFrame(columns=['Name', 'Total Prisma Kristallgläser'])
+
         # Zusammenführen der berechneten Werte mit dem ursprünglichen DataFrame
         data = pd.merge(data, led_sums, on='Name', how='left')
         data = pd.merge(data, glas_sums, on='Name', how='left')
         data = pd.merge(data, holz_sums, on='Name', how='left')
+        data = pd.merge(data, prisma_sums, on='Name', how='left')
 
         # Fehlende Werte (z. B. wenn keine Untersetzer oder Trinkhalme enthalten sind) auf 0 setzen
         data['Total LED Untersetzer'] = data['Total LED Untersetzer'].fillna(0).astype(int)
         data['Total Glas Trinkhalme']  = data['Total Glas Trinkhalme'].fillna(0).astype(int)
         data['Total Holzaufsteller'] = data['Total Holzaufsteller'].fillna(0).astype(int)
+        data['Total Prisma Kristallgläser'] = data['Total Prisma Kristallgläser'].fillna(0).astype(int)
 
         print("Anzahl der bestellten Produkte der jeweiligen Produkttypen pro Bestellung berechnet und hinzugefügt.")
         return data
@@ -102,6 +117,7 @@ class DataProcessor:
         def calculate_weight(row):
             weight_glass_straw_package = 0.126  # Gewicht pro Glas-Trinkhalm-Packung in kg
             weight_wood_stand = 0.117  # Gewicht pro Holzaufsteller in kg
+            weight_prisma_glasses = 0.836  # Gewicht pro 2 Prisma-Kristallgläser in kg
 
             # LED-Gewicht ermitteln: Basierend auf der Gesamtanzahl der LED-Untersetzer
             total_led = int(row['Total LED Untersetzer'])
@@ -119,8 +135,12 @@ class DataProcessor:
             # Holzaufsteller
             total_wood = int(row['Total Holzaufsteller'])
             wood_weight = total_wood * weight_wood_stand
+
+            # 2 Prisma-Kristallgläser
+            total_prisma = int(row.get('Total Prisma Kristallgläser', 0))
+            prisma_weight = total_prisma * weight_prisma_glasses
         
-            total_weight = led_weight + glass_weight + wood_weight
+            total_weight = led_weight + glass_weight + wood_weight + prisma_weight
 
             # Aufrunden auf 0,1 kg-Schritte
             total_weight = math.ceil(total_weight * 10) / 10
@@ -132,11 +152,14 @@ class DataProcessor:
         data['Total LED Untersetzer'] = data['Total LED Untersetzer'].astype(int)
         data['Total Glas Trinkhalme'] = data['Total Glas Trinkhalme'].astype(int)
         data['Total Holzaufsteller'] = data['Total Holzaufsteller'].astype(int)
+        if 'Total Prisma Kristallgläser' not in data.columns:
+            data['Total Prisma Kristallgläser'] = 0
+        data['Total Prisma Kristallgläser'] = data['Total Prisma Kristallgläser'].astype(int)
 
         # Gewichtsspalte für alle Bestellungen berechnen
         data['Weight'] = data.apply(lambda row: calculate_weight(row) if pd.notnull(row['Shipping Country']) else '', axis=1)
 
-        print("Gewichtsspalte für alle Bestellungen außer DE basierend auf LED-Untersetzer, Glas-Trinkhalmen und Holzaufsteller hinzugefügt.")
+        print("Gewichtsspalte für alle Bestellungen außer DE basierend auf LED-Untersetzer, Glas-Trinkhalmen, Holzaufsteller und Prisma-Kristallgläser hinzugefügt.")
         return data
 
     def split_shipping_street(self, data):
@@ -186,6 +209,7 @@ class DataProcessor:
         price_packing_external_product = 0.25   # Verpackung externer Produkte (Beispiel: Casa Vivida Gläser)
         unit_price_glass_straw = 1.70           # pro Glasstrohhalm
         unit_price_wooden_stand = 4.50          # pro Holzaufsteller
+        unit_price_prisma_glasses = 0.80        # pro 2 Prisma-Kristallgläser
 
         # Neue Spalte anlegen
         data['Manufacturer Cost'] = ''
@@ -203,6 +227,7 @@ class DataProcessor:
         total_external = 0
         total_pack_2 = 0
         total_pack_4 = 0
+        total_prisma = 0
 
 
         for order in unique_orders:
@@ -214,6 +239,7 @@ class DataProcessor:
             quantity_led = int(subset.get('Total LED Untersetzer', 0))
             quantity_glass = int(subset.get('Total Glas Trinkhalme', 0))
             quantity_wood = int(subset.get('Total Holzaufsteller', 0))
+            quantity_prisma = int(subset.get('Total Prisma Kristallgläser', 0))
 
             # Externe Produkte (alle, die kein Untersetzer, Glas-Trinkhalm oder Holzaufsteller sind)
             product_names = order_rows['Lineitem name'].unique()
@@ -247,6 +273,7 @@ class DataProcessor:
             # Glas-Trinkhalme und Holzaufsteller
             glass_cost = quantity_glass * unit_price_glass_straw
             wood_cost = quantity_wood * unit_price_wooden_stand
+            prisma_cost = quantity_prisma * unit_price_prisma_glasses
 
             # Externe Produktkosten
             external_cost = qty_external * price_packing_external_product
@@ -258,6 +285,7 @@ class DataProcessor:
                 + packing_work_cost
                 + glass_cost
                 + wood_cost
+                + prisma_cost
                 + external_cost
                 + order_processing_fee
                 + price_delivery_package
@@ -271,6 +299,7 @@ class DataProcessor:
             total_glass += quantity_glass
             total_wood += quantity_wood
             total_external += qty_external
+            total_prisma += quantity_prisma
             total_costs.append(total_cost)
 
         # Gesamtsumme & Zusammenfassung
@@ -283,6 +312,7 @@ class DataProcessor:
         total_row['Total LED Untersetzer'] = total_led
         total_row['Total Glas Trinkhalme'] = total_glass
         total_row['Total Holzaufsteller'] = total_wood
+        total_row['Total Prisma Kristallgläser'] = total_prisma
         total_row['Externe Produkte'] = total_external
         total_row['Anzahl Bestellungen'] = total_orders
         total_row['Gesamt 2er-Schachteln'] = total_pack_2

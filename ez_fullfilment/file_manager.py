@@ -16,6 +16,13 @@ class FileManager:
         self.anthrazit_sku_marker = "10010105"
         self.schwarz_sku_marker = "10010104"
         self.accessory_skus = {"9999999998", "9999999999", "G00000001", "20269998"}
+        self.personalizer_tag = "product_personalizer"
+        self.personalized_name_markers = (
+            "leuchtende led-untersetzer | eigenes design | quadratisch",
+            "leuchtende led-untersetzer | eigenes design | rund",
+            "eigenes design | quadratisch",
+            "eigenes design | rund",
+        )
 
     # Diese Funktion durchsucht den Eingabeordner nach allen CSV-Dateien,liest sie ein und kombiniert sie zu einem einzigen DataFrame.
     def merge_csv_files(self):
@@ -50,6 +57,7 @@ class FileManager:
             "processed_delivery_notes_order_count": 0,
             "upload_shipping_labels_count": 0,
             "processed_shipping_labels_count": 0,
+            "personalized_order_count": 0,
         }
         try:
             combined_data = self.merge_csv_files()
@@ -69,7 +77,7 @@ class FileManager:
             "Lineitem fulfillment status", "Billing Name", "Billing Street", "Billing Address1", "Billing Address2", 
             "Billing Company", "Billing City", "Billing Zip", "Billing Province", "Billing Country", "Billing Phone", 
             "Shipping Address1", "Shipping Address2", "Shipping Province", "Shipping Phone", "Cancelled at", 
-            "Payment Method", "Payment Reference", "Refunded Amount", "Id", "Tags", "Risk Level", "Source", 
+            "Payment Method", "Payment Reference", "Refunded Amount", "Id", "Risk Level", "Source", 
             "Lineitem discount", "Tax 1 Name", "Tax 1 Value", "Tax 2 Name", "Tax 2 Value", "Tax 3 Name", 
             "Tax 3 Value", "Tax 4 Name", "Tax 4 Value", "Tax 5 Name", "Tax 5 Value", "Phone", "Receipt Number", 
             "Duties", "Billing Province Name", "Shipping Province Name", "Payment Terms Name", "Next Payment Due At", 
@@ -82,7 +90,7 @@ class FileManager:
             "Billing Name", "Billing Street", "Billing Address1", "Billing Address2", "Billing Company", "Billing City", 
             "Billing Zip", "Billing Province", "Billing Country", "Billing Phone", "Shipping Address1", "Shipping Address2", 
             "Shipping Province", "Shipping Phone", "Cancelled at", "Payment Method", "Payment Reference", "Refunded Amount", 
-            "Id", "Tags", "Risk Level", "Source", "Lineitem discount", "Tax 1 Name", "Tax 1 Value", "Tax 2 Name", "Tax 2 Value", 
+            "Id", "Risk Level", "Source", "Lineitem discount", "Tax 1 Name", "Tax 1 Value", "Tax 2 Name", "Tax 2 Value", 
             "Tax 3 Name", "Tax 3 Value", "Tax 4 Name", "Tax 4 Value", "Tax 5 Name", "Tax 5 Value", "Phone", "Receipt Number", 
             "Duties", "Billing Province Name", "Shipping Province Name", "Payment Terms Name", "Next Payment Due At", "Payment ID", "Payment References", "Note Attributes"
         ]
@@ -125,6 +133,9 @@ class FileManager:
 
         order_sequence = self._collect_order_sequence(regular_data)
         order_categories = self._categorize_orders(combined_data)
+        stats["personalized_order_count"] = sum(
+            1 for category in order_categories.values() if category == "personalisiert"
+        )
 
         #Manufacturer Total Costs
         cost_data = self.processor.add_manufacturer_costs(cleaned_data_manufacturer)
@@ -246,6 +257,7 @@ class FileManager:
         total_orders = len(delivery_notes.keys())
 
         writers = {
+            "personalisiert": PdfWriter(),
             "marmor_warmweiss": PdfWriter(),
             "marmor": PdfWriter(),
             "schwarzer_marmor_warmweiss": PdfWriter(),
@@ -277,6 +289,7 @@ class FileManager:
             add_pages(order, pages)
 
         output_files = {
+            "personalisiert": f"{output_basename}_Lieferscheine_Personalisiert.pdf",
             "marmor_warmweiss": f"{output_basename}_Lieferscheine_Marmor_Warmweiss.pdf",
             "marmor": f"{output_basename}_Lieferscheine_Marmor_Rest.pdf",
             "schwarzer_marmor_warmweiss": f"{output_basename}_Lieferscheine_Schwarzer_Marmor_Warmweiss.pdf",
@@ -305,6 +318,7 @@ class FileManager:
         total_pages = sum(len(pages) for pages in labels.values())
 
         writers = {
+            "personalisiert": PdfWriter(),
             "marmor_warmweiss": PdfWriter(),
             "marmor": PdfWriter(),
             "schwarzer_marmor_warmweiss": PdfWriter(),
@@ -336,6 +350,7 @@ class FileManager:
             add_pages(order, pages)
 
         output_files = {
+            "personalisiert": f"{output_basename}_Versandlabels_Personalisiert.pdf",
             "marmor_warmweiss": f"{output_basename}_Versandlabels_Marmor_Warmweiss.pdf",
             "marmor": f"{output_basename}_Versandlabels_Marmor_Rest.pdf",
             "schwarzer_marmor_warmweiss": f"{output_basename}_Versandlabels_Schwarzer_Marmor_Warmweiss.pdf",
@@ -358,13 +373,22 @@ class FileManager:
 
     def _categorize_orders(self, data):
         categories = {}
-        if 'Name' not in data.columns or 'Lineitem sku' not in data.columns:
+        if 'Name' not in data.columns or 'Lineitem name' not in data.columns:
             return categories
 
+        has_sku_column = 'Lineitem sku' in data.columns
         grouped = data.groupby('Name')
         for name, group in grouped:
             order = self._normalize_order_number(name)
             if not order:
+                continue
+
+            if self._is_personalized_order(group):
+                categories[order] = "personalisiert"
+                continue
+
+            if not has_sku_column:
+                categories[order] = "rest"
                 continue
 
             led_rows = group[group['Lineitem name'].str.contains('Untersetzer', case=False, na=False)]
@@ -403,3 +427,37 @@ class FileManager:
                 categories[order] = "rest"
 
         return categories
+
+    def _is_personalized_order(self, group):
+        if group is None or group.empty:
+            return False
+        return self._has_personalizer_tag(group) or self._has_personalized_lineitem(group)
+
+    def _has_personalizer_tag(self, group):
+        if 'Tags' not in group.columns:
+            return False
+
+        for raw_tags in group['Tags'].dropna().astype(str):
+            tags = raw_tags.strip().lower()
+            if not tags:
+                continue
+            pattern = rf'(^|[\s,;|]){re.escape(self.personalizer_tag)}($|[\s,;|])'
+            if re.search(pattern, tags):
+                return True
+        return False
+
+    def _has_personalized_lineitem(self, group):
+        if 'Lineitem name' not in group.columns:
+            return False
+
+        for raw_name in group['Lineitem name'].dropna().astype(str):
+            name = raw_name.strip().lower()
+            if not name or 'untersetzer' not in name:
+                continue
+
+            if any(marker in name for marker in self.personalized_name_markers):
+                return True
+
+            if 'eigenes design' in name and 'untersetzer' in name:
+                return True
+        return False

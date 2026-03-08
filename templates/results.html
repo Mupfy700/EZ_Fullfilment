@@ -236,6 +236,28 @@
             font-size: 0.85rem;
         }
 
+        .notice-personalized {
+            margin: 0 0 1.25rem 0;
+            padding: 1rem 1.1rem;
+            border-radius: 12px;
+            background: #fff6da;
+            border: 1px solid #f0c969;
+            text-align: left;
+        }
+
+        .notice-personalized h2 {
+            margin: 0 0 0.4rem 0;
+            font-size: 1rem;
+            color: #7a4b00;
+        }
+
+        .notice-personalized p {
+            margin: 0.3rem 0;
+            font-size: 0.95rem;
+            color: #5f4a1f;
+            line-height: 1.45;
+        }
+
     </style>
 </head>
 <body>
@@ -315,6 +337,19 @@
         </div>
 
         <h1>Ergebnisse herunterladen</h1>
+        {% set personalized_order_count = stats.personalized_order_count|default(0) %}
+        {% if personalized_order_count > 0 %}
+            <div class="notice-personalized">
+                <h2>⚠️ Wichtiger Hinweis zu personalisierten LED-Untersetzern</h2>
+                <p>
+                    In diesem Lauf wurden <strong>{{ personalized_order_count }}</strong>
+                    Bestellung{{ '' if personalized_order_count == 1 else 'en' }} mit personalisierten LED-Untersetzern erkannt.
+                </p>
+                <p>
+                    Bitte zusätzlich die Druckdaten in Shopify exportieren und zusammen mit den Bestelldaten an den Hersteller schicken.
+                </p>
+            </div>
+        {% endif %}
 
         {% set files = namespace(other=[], shipping_docs=[]) %}
         {% for file in result_files %}

@@ -1,5 +1,6 @@
 import pandas as pd
 import math
+import re
 
 class DataProcessor:
     def __init__(self, led_coaster_weight_map):
@@ -341,9 +342,16 @@ class DataProcessor:
         # ------------------------------------------
         # 1) LED-Untersetzer erkennen und parsen
         # ------------------------------------------
-        # LED-Untersetzer: haben ein " / LED ..." im Namen
-        led_mask = df['Lineitem name'].str.contains('LED ', na=False) & \
-            df['Lineitem name'].str.contains('Untersetzer', na=False)
+        # LED-Untersetzer erkennen:
+        # - Klassische Namen mit LED-Farbe
+        # - Personalisierte Untersetzer ("Eigenes Design")
+        led_mask = (
+            df['Lineitem name'].str.contains('Untersetzer', case=False, na=False)
+            & (
+                df['Lineitem name'].str.contains(r'LED[\s-]', case=False, na=False, regex=True)
+                | df['Lineitem name'].str.contains('Eigenes Design', case=False, na=False)
+            )
+        )
 
 
         led_df = df[led_mask].copy()
@@ -353,38 +361,60 @@ class DataProcessor:
             Erwartete Formate:
             1) Leuchtende LED-Untersetzer ... - Anthrazit / LED blau
             2) Leuchtende LED-Untersetzer ... | Design: Schneeflocke - LED blau
+            3) Leuchtende LED-Untersetzer | Eigenes Design | quadratisch/rund
             """
 
-            name = str(name)
+            name = str(name).strip()
+            lower_name = name.lower()
 
-            # 1) LED-Farbe ermitteln: alles ab "LED " bis zum Ende
+            # 1) LED-Farbe ermitteln
             color = ''
-            if 'LED ' in name:
-                color_part = name.split('LED ', 1)[1].strip()    # z.B. "blau" oder "warmweiß"
-                color = f"LED {color_part}"
-            # Wenn du stattdessen exakt "LED blau" etc. im Pivot haben willst, passt das perfekt.
+            color_tokens = [
+                ('warmweiß', 'LED warmweiß'),
+                ('warmweiss', 'LED warmweiß'),
+                ('rot', 'LED rot'),
+                ('grün', 'LED grün'),
+                ('gruen', 'LED grün'),
+                ('blau', 'LED blau'),
+            ]
+            for token, mapped_color in color_tokens:
+                if re.search(rf'(?i)\bled[\s:/\-|]*{token}\b', name):
+                    color = mapped_color
+                    break
 
             design = ''
 
-            # 2a) Neues Format: "... | Design: Schneeflocke - LED blau"
-            if '| Design:' in name and ' - ' in name:
+            # 2a) Personalisierte Produkte
+            if 'eigenes design' in lower_name:
+                if 'quadratisch' in lower_name:
+                    design = 'Eigenes Design (quadratisch)'
+                elif 'rund' in lower_name:
+                    design = 'Eigenes Design (rund)'
+                else:
+                    design = 'Eigenes Design'
+
+            # 2b) Neues Format: "... | Design: Schneeflocke - LED blau"
+            if not design and '| Design:' in name and ' - ' in name:
                 # nach "| Design:" kommt " Schneeflocke - LED blau"
                 after_design = name.split('| Design:', 1)[1]
                 design = after_design.split(' - ', 1)[0].strip()
 
-            # 2b) Altes Format: "... - Anthrazit / LED blau"
-            elif ' - ' in name and ' / ' in name:
+            # 2c) Altes Format: "... - Anthrazit / LED blau"
+            elif not design and ' - ' in name and ' / ' in name:
                 after_dash = name.split(' - ', 1)[1]             # "Anthrazit / LED blau"
                 design = after_dash.split(' / ', 1)[0].strip()
 
-            # 2c) Fallback: falls mal irgendetwas anderes kommt
-            elif ' - ' in name:
+            # 2d) Fallback: falls mal irgendetwas anderes kommt
+            elif not design and ' - ' in name:
                 # Nimm das, was nach dem '-' kommt, bis vor "LED"
                 after_dash = name.split(' - ', 1)[1]
                 if 'LED ' in after_dash:
                     design = after_dash.split('LED ', 1)[0].strip()
                 else:
                     design = after_dash.strip()
+
+            if not design:
+                design = 'Unbekanntes Design'
 
             return design, color
 
@@ -400,6 +430,7 @@ class DataProcessor:
             .sum()
             .reset_index()
         )
+        total_by_design = grouped.groupby('Design')['Lineitem quantity'].sum()
 
         # Pivot: eine Zeile pro Design, Spalten = LED-Farben
         pivot = grouped.pivot(
@@ -419,8 +450,8 @@ class DataProcessor:
         # In Integer umwandeln
         pivot = pivot.astype(int)
 
-        # Gesamtspalte
-        pivot['Gesamt'] = pivot.sum(axis=1)
+        # Gesamtspalte (inkl. ggf. unbekannter LED-Farben)
+        pivot['Gesamt'] = total_by_design.reindex(pivot.index, fill_value=0).astype(int)
 
         # Nach Gesamt absteigend sortieren
         pivot = pivot.sort_values('Gesamt', ascending=False)

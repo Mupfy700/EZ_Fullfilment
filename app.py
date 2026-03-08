@@ -30,7 +30,13 @@ DEFAULT_STATS = {
     "processed_delivery_notes_order_count": 0,
     "upload_shipping_labels_count": 0,
     "processed_shipping_labels_count": 0,
+    "personalized_order_count": 0,
 }
+
+
+def _normalize_stats_payload(data: Optional[dict]) -> dict:
+    payload = data or {}
+    return {key: int(payload.get(key, 0) or 0) for key in DEFAULT_STATS.keys()}
 
 GCS_UPLOAD_BUCKET = os.environ.get("GCS_UPLOAD_BUCKET")
 GCS_RESULTS_BUCKET = os.environ.get("GCS_RESULTS_BUCKET", GCS_UPLOAD_BUCKET)
@@ -175,7 +181,7 @@ def _load_stats_from_gcs(session_id: str):
         if not stats_blob.exists():
             return DEFAULT_STATS.copy()
         content = stats_blob.download_as_text()
-        return json.loads(content)
+        return _normalize_stats_payload(json.loads(content))
     except Exception as exc:
         print(f"Statistiken aus GCS konnten nicht geladen werden: {exc}")
         return DEFAULT_STATS.copy()
@@ -207,16 +213,7 @@ def _load_stats():
     try:
         with open(STATS_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
-            return {
-                "upload_order_count": int(data.get("upload_order_count", 0) or 0),
-                "processed_order_count": int(data.get("processed_order_count", 0) or 0),
-                "upload_delivery_notes_page_count": int(data.get("upload_delivery_notes_page_count", 0) or 0),
-                "upload_delivery_notes_order_count": int(data.get("upload_delivery_notes_order_count", 0) or 0),
-                "processed_delivery_notes_page_count": int(data.get("processed_delivery_notes_page_count", 0) or 0),
-                "processed_delivery_notes_order_count": int(data.get("processed_delivery_notes_order_count", 0) or 0),
-                "upload_shipping_labels_count": int(data.get("upload_shipping_labels_count", 0) or 0),
-                "processed_shipping_labels_count": int(data.get("processed_shipping_labels_count", 0) or 0),
-            }
+            return _normalize_stats_payload(data)
     except Exception as exc:
         print(f"Statistiken konnten nicht geladen werden: {exc}")
         return DEFAULT_STATS.copy()
@@ -285,9 +282,7 @@ def index():
             # Hauptverarbeitungsfunktion aufrufen
             run_stats = main(specific_name, csv_dir, RESULT_FOLDER, delivery_note_paths, shipping_label_paths)
             if isinstance(run_stats, dict):
-                stats_to_store = DEFAULT_STATS.copy()
-                for key in stats_to_store.keys():
-                    stats_to_store[key] = int(run_stats.get(key, 0) or 0)
+                stats_to_store = _normalize_stats_payload(run_stats)
             else:
                 stats_to_store = DEFAULT_STATS.copy()
 
@@ -372,9 +367,7 @@ def process_gcs():
         try:
             run_stats = main(specific_name, csv_dir, RESULT_FOLDER, delivery_note_paths, shipping_label_paths)
             if isinstance(run_stats, dict):
-                stats_to_store = DEFAULT_STATS.copy()
-                for key in stats_to_store.keys():
-                    stats_to_store[key] = int(run_stats.get(key, 0) or 0)
+                stats_to_store = _normalize_stats_payload(run_stats)
             else:
                 stats_to_store = DEFAULT_STATS.copy()
             _save_stats(stats_to_store)

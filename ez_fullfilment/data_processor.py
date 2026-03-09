@@ -210,7 +210,7 @@ class DataProcessor:
         price_packing_external_product = 0.25   # Verpackung externer Produkte (Beispiel: Casa Vivida Gläser)
         unit_price_glass_straw = 1.70           # pro Glasstrohhalm
         unit_price_wooden_stand = 4.50          # pro Holzaufsteller
-        unit_price_prisma_glasses = 0.80        # pro 2 Prisma-Kristallgläser
+        unit_price_prisma_glasses = 0.60        # pro 2 Prisma-Kristallgläser
 
         # Neue Spalte anlegen
         data['Manufacturer Cost'] = ''
